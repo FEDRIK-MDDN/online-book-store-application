@@ -187,7 +187,7 @@ import java.util.Arrays;
 
 @Configuration
 public class CorsConfig {
-    @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:3010}")
+    @Value("${app.cors.allowed-origins:http://localhost:3000}")
     private String origins;
 
     @Bean
@@ -210,7 +210,7 @@ public class CorsConfig {
 ```yaml
 app:
   cors:
-    allowed-origins: http://localhost:3000,http://localhost:3010
+    allowed-origins: http://localhost:3000
 ```
 
 ## Troubleshooting Common Issues

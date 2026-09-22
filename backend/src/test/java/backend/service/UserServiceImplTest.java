@@ -2,6 +2,9 @@ package backend.service;
 
 import backend.dto.UpdateUserRequest;
 import backend.model.UserModel;
+import backend.repository.CartItemRepository;
+import backend.repository.CartRepository;
+import backend.repository.OrderRepository;
 import backend.repository.UserRepository;
 import backend.security.JwtUtil;
 import org.junit.jupiter.api.AfterEach;
@@ -26,6 +29,9 @@ public class UserServiceImplTest {
     private PasswordEncoder encoder;
     private JwtUtil jwtUtil;
     private EmailService emailService;
+    private CartRepository cartRepository;
+    private CartItemRepository cartItemRepository;
+    private OrderRepository orderRepository;
     private UserServiceImpl service;
 
     @BeforeEach
@@ -34,7 +40,10 @@ public class UserServiceImplTest {
         encoder = Mockito.mock(PasswordEncoder.class);
         jwtUtil = Mockito.mock(JwtUtil.class);
         emailService = Mockito.mock(EmailService.class);
-        service = new UserServiceImpl(repo, encoder, jwtUtil, emailService);
+        cartRepository = Mockito.mock(CartRepository.class);
+        cartItemRepository = Mockito.mock(CartItemRepository.class);
+        orderRepository = Mockito.mock(OrderRepository.class);
+        service = new UserServiceImpl(repo, encoder, jwtUtil, emailService, cartRepository, cartItemRepository, orderRepository);
     }
 
     @AfterEach

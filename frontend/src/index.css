@@ -1,268 +1,418 @@
-﻿/* Global CSS Variables & Reset */
+/* ============================================================
+   BOOKS — Global Design Tokens & Base Reset
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&display=swap');
+
 :root {
-  /* Modern Light theme */
-  --bg: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  --bg-solid: #f8fafc;
-  --panel: #ffffff;
-  --elev: #f1f5f9;
-  --text: #0f172a;
-  --muted: #64748b;
-  --primary: #3b82f6;
-  --primary-900: #1d4ed8;
-  --primary-light: #dbeafe;
-  --accent: #f59e0b;
-  --accent-light: #fef3c7;
-  --success: #10b981;
-  --success-light: #d1fae5;
-  --warning: #f59e0b;
-  --warning-light: #fef3c7;
-  --danger: #ef4444;
-  --danger-light: #fee2e2;
-  --border: #e2e8f0;
-  --chip: #f1f5f9;
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --container: 1200px;
+   /* ── BOOKS Brand Colors ── */
+   --ph-cream: #FAF8F3;
+   --ph-cream-dark: #F2EDE3;
+   --ph-white: #FFFFFF;
+   --ph-gold: #C8963E;
+   --ph-gold-dark: #A97830;
+   --ph-gold-light: #F5E6CC;
+   --ph-dark: #2C2C1A;
+   --ph-dark2: #3D3D28;
+   --ph-muted: #6B6B5A;
+   --ph-muted2: #9B9B86;
+   --ph-border: #E8E4DC;
+   --ph-border2: #D4CFC4;
+   --ph-tag-bg: #EEEBE3;
+   --ph-red: #E05050;
+   --ph-green: #4CAF7D;
+   --ph-blue: #4A90C4;
+
+   /* ── Legacy / Admin vars (keep for compat) ── */
+   --bg: var(--ph-cream);
+   --bg-solid: var(--ph-cream);
+   --panel: var(--ph-white);
+   --elev: var(--ph-tag-bg);
+   --text: var(--ph-dark);
+   --muted: var(--ph-muted);
+   --primary: var(--ph-gold);
+   --primary-900: var(--ph-gold-dark);
+   --primary-light: var(--ph-gold-light);
+   --accent: var(--ph-gold);
+   --accent-light: var(--ph-gold-light);
+   --success: var(--ph-green);
+   --success-light: #D1F2E2;
+   --warning: #F59E0B;
+   --warning-light: #FEF3C7;
+   --danger: var(--ph-red);
+   --danger-light: #FEE2E2;
+   --border: var(--ph-border);
+   --chip: var(--ph-tag-bg);
+   --shadow: 0 1px 4px rgba(44, 44, 26, 0.08), 0 2px 8px rgba(44, 44, 26, 0.05);
+   --shadow-lg: 0 8px 24px rgba(44, 44, 26, 0.12), 0 2px 8px rgba(44, 44, 26, 0.06);
+   --container: 1680px;
+
+   /* ── Typography ── */
+   --font-heading: 'Playfair Display', Georgia, serif;
+   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+   /* ── Spacing ── */
+   --radius-sm: 6px;
+   --radius: 10px;
+   --radius-lg: 16px;
+   --radius-xl: 24px;
 }
 
-/* Modern Dark theme overrides */
-[data-theme="dark"],
-.auth-container {
-  --bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  --bg-solid: #0f172a;
-  --panel: #1e293b;
-  --elev: #334155;
-  --border: #475569;
-  --chip: #334155;
-  --text: #f8fafc;
-  --muted: #94a3b8;
-  --primary: #60a5fa;
-  --primary-900: #3b82f6;
-  --primary-light: #1e3a8a;
-  --accent: #fbbf24;
-  --accent-light: #92400e;
-  --success: #34d399;
-  --success-light: #064e3b;
-  --warning: #fbbf24;
-  --warning-light: #92400e;
-  --danger: #f87171;
-  --danger-light: #7f1d1d;
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+/* ── Remove dark theme override (BOOKS is always light) ── */
+[data-theme="dark"] {
+   --bg: var(--ph-cream);
+   --bg-solid: var(--ph-cream);
+   --panel: var(--ph-white);
+   --text: var(--ph-dark);
+   --muted: var(--ph-muted);
+   --border: var(--ph-border);
 }
 
-/* CSS Reset */
+/* ============================================================
+   CSS Reset
+   ============================================================ */
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
+   box-sizing: border-box;
 }
 
 * {
-  margin: 0;
-  padding: 0;
+   margin: 0;
+   padding: 0;
+}
+
+html {
+   scroll-behavior: smooth;
 }
 
 body {
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
+   font-family: var(--font-body);
+   font-size: 15px;
+   line-height: 1.6;
+   -webkit-font-smoothing: antialiased;
+   -moz-osx-font-smoothing: grayscale;
+   background: var(--ph-cream);
+   color: var(--ph-dark);
+   min-height: 100vh;
 }
 
-img, picture, video, canvas, svg {
-  display: block;
-  max-width: 100%;
+img,
+picture,
+video,
+canvas,
+svg {
+   display: block;
+   max-width: 100%;
 }
 
-input, button, textarea, select {
-  font: inherit;
+input,
+button,
+textarea,
+select {
+   font: inherit;
 }
 
-p, h1, h2, h3, h4, h5, h6 {
-  overflow-wrap: break-word;
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+   overflow-wrap: break-word;
 }
 
-/* Focus styles */
-:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
+ul,
+ol {
+   list-style: none;
 }
 
-/* Remove default button styles */
-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-}
-
-/* Link styles */
 a {
-  color: var(--primary);
-  text-decoration: none;
+   color: inherit;
+   text-decoration: none;
 }
 
-a:hover {
-  text-decoration: underline;
-}
-
-/* Modern scrollbar styling */
+/* ============================================================
+   Scrollbar
+   ============================================================ */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+   width: 7px;
+   height: 7px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--elev);
-  border-radius: 4px;
+   background: var(--ph-cream-dark);
+   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--muted);
-  border-radius: 4px;
-  border: 2px solid var(--elev);
+   background: var(--ph-border2);
+   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text);
+   background: var(--ph-muted2);
 }
 
-/* Selection styling */
 ::selection {
-  background: rgba(59, 130, 246, 0.2);
-  color: var(--text);
+   background: var(--ph-gold-light);
+   color: var(--ph-dark);
 }
 
-/* Modern animations */
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* ============================================================
+   Focus
+   ============================================================ */
+:focus-visible {
+   outline: 2px solid var(--ph-gold);
+   outline-offset: 2px;
 }
 
-@keyframes fadeInScale {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+button {
+   background: none;
+   border: none;
+   cursor: pointer;
 }
 
-/* Utility animations */
-.animate-slide-up {
-  animation: slideUp 0.4s ease-out;
+/* ============================================================
+   BOOKS Button System
+   ============================================================ */
+.ph-btn {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   gap: 6px;
+   padding: 10px 22px;
+   border-radius: var(--radius-sm);
+   font-family: var(--font-body);
+   font-size: 0.875rem;
+   font-weight: 600;
+   letter-spacing: 0.01em;
+   cursor: pointer;
+   transition: all 0.2s ease;
+   white-space: nowrap;
+   border: 1.5px solid transparent;
 }
 
-.animate-fade-in {
-  animation: fadeInScale 0.3s ease-out;
+.ph-btn--primary {
+   background: var(--ph-gold);
+   color: #fff;
+   border-color: var(--ph-gold);
 }
 
-/* Modern glass morphism effects */
-.glass-effect {
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+.ph-btn--primary:hover {
+   background: var(--ph-gold-dark);
+   border-color: var(--ph-gold-dark);
+   transform: translateY(-1px);
+   box-shadow: 0 4px 12px rgba(200, 150, 62, 0.3);
 }
 
-[data-theme="dark"] .glass-effect {
-  background: rgba(30, 41, 59, 0.1);
-  border: 1px solid rgba(71, 85, 105, 0.2);
+.ph-btn--outline {
+   background: transparent;
+   color: var(--ph-dark);
+   border-color: var(--ph-border2);
 }
 
-/* Modern theme switcher button */
-.theme-toggle {
-  position: relative;
-  width: 50px;
-  height: 26px;
-  background: var(--border);
-  border-radius: 26px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
+.ph-btn--outline:hover {
+   border-color: var(--ph-gold);
+   color: var(--ph-gold);
 }
 
-.theme-toggle::before {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 22px;
-  height: 22px;
-  background: var(--panel);
-  border-radius: 50%;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+.ph-btn--ghost {
+   background: transparent;
+   color: var(--ph-muted);
+   border-color: transparent;
 }
 
-[data-theme="dark"] .theme-toggle {
-  background: var(--primary);
+.ph-btn--ghost:hover {
+   color: var(--ph-dark);
+   background: var(--ph-tag-bg);
 }
 
-[data-theme="dark"] .theme-toggle::before {
-  transform: translateX(24px);
+.ph-btn--sm {
+   padding: 7px 14px;
+   font-size: 0.8rem;
 }
 
-/* Modern badge styles */
-.badge-modern {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.025em;
+.ph-btn--lg {
+   padding: 13px 28px;
+   font-size: 0.95rem;
 }
 
-.badge-success {
-  background: var(--success-light);
-  color: var(--success);
+/* ── Legacy btn compatibility ── */
+.btn {
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   gap: 6px;
+   padding: 9px 20px;
+   border-radius: var(--radius-sm);
+   font-size: 0.875rem;
+   font-weight: 600;
+   cursor: pointer;
+   transition: all 0.2s ease;
+   border: 1.5px solid transparent;
 }
 
-.badge-warning {
-  background: var(--warning-light);
-  color: var(--warning);
+.btn--primary {
+   background: var(--ph-gold);
+   color: #fff;
+   border-color: var(--ph-gold);
 }
 
-.badge-danger {
-  background: var(--danger-light);
-  color: var(--danger);
+.btn--primary:hover {
+   background: var(--ph-gold-dark);
+   border-color: var(--ph-gold-dark);
 }
 
-.badge-primary {
-  background: var(--primary-light);
-  color: var(--primary);
+.btn--outline {
+   background: transparent;
+   color: var(--ph-dark);
+   border-color: var(--ph-border2);
 }
 
-/* Utility classes */
+.btn--outline:hover {
+   border-color: var(--ph-gold);
+   color: var(--ph-gold);
+}
+
+.btn--ghost {
+   background: transparent;
+   color: var(--ph-muted);
+}
+
+.btn--ghost:hover {
+   color: var(--ph-dark);
+   background: var(--ph-tag-bg);
+}
+
+.btn--sm {
+   padding: 6px 12px;
+   font-size: 0.8rem;
+}
+
+.btn--lg {
+   padding: 13px 26px;
+   font-size: 0.95rem;
+}
+
+/* ============================================================
+   Utility
+   ============================================================ */
 .container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1rem;
+   max-width: var(--container);
+   margin: 0 auto;
+   padding: 0 1.5rem;
 }
 
 .sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+   position: absolute;
+   width: 1px;
+   height: 1px;
+   padding: 0;
+   margin: -1px;
+   overflow: hidden;
+   clip: rect(0, 0, 0, 0);
+   white-space: nowrap;
+   border: 0;
+}
+
+/* ============================================================
+   Animations
+   ============================================================ */
+@keyframes slideUp {
+   from {
+      opacity: 0;
+      transform: translateY(20px);
+   }
+
+   to {
+      opacity: 1;
+      transform: translateY(0);
+   }
+}
+
+@keyframes fadeIn {
+   from {
+      opacity: 0;
+   }
+
+   to {
+      opacity: 1;
+   }
+}
+
+@keyframes scaleIn {
+   from {
+      opacity: 0;
+      transform: scale(0.95);
+   }
+
+   to {
+      opacity: 1;
+      transform: scale(1);
+   }
+}
+
+@keyframes shimmer {
+
+   0%,
+   100% {
+      opacity: 1;
+   }
+
+   50% {
+      opacity: 0.5;
+   }
+}
+
+.animate-slide-up {
+   animation: slideUp 0.4s ease-out;
+}
+
+.animate-fade-in {
+   animation: fadeIn 0.35s ease-out;
+}
+
+/* ============================================================
+   Badges
+   ============================================================ */
+.badge-modern {
+   display: inline-flex;
+   align-items: center;
+   gap: 4px;
+   padding: 3px 9px;
+   border-radius: 20px;
+   font-size: 0.72rem;
+   font-weight: 600;
+   letter-spacing: 0.03em;
+}
+
+.badge-success {
+   background: #D1F2E2;
+   color: #2E7D52;
+}
+
+.badge-warning {
+   background: #FEF3C7;
+   color: #B45309;
+}
+
+.badge-danger {
+   background: #FEE2E2;
+   color: #C0392B;
+}
+
+.badge-primary {
+   background: var(--ph-gold-light);
+   color: var(--ph-gold-dark);
+}
+
+/* ============================================================
+   Star Rating
+   ============================================================ */
+.ph-stars {
+   display: inline-flex;
+   gap: 1px;
+   color: var(--ph-gold);
+   font-size: 0.8rem;
 }

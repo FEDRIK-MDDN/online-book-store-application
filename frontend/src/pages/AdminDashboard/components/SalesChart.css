@@ -1,8 +1,13 @@
+/* ============================================================
+   BOOKS — Admin Sales Chart
+   ============================================================ */
+
 .chart-card {
-  background: white;
-  border-radius: 12px;
+  background: var(--ph-white);
+  border: 1px solid var(--ph-border);
+  border-radius: var(--radius-lg);
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
 }
 
 .chart-header {
@@ -13,9 +18,10 @@
 }
 
 .chart-header h3 {
-  font-size: 1.25rem;
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--ph-dark);
   margin: 0;
 }
 
@@ -28,13 +34,14 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-size: 0.9rem;
-  color: #6b7280;
+  font-size: 0.82rem;
+  color: var(--ph-muted);
+  font-family: var(--font-body);
 }
 
 .legend-dot {
-  width: 12px;
-  height: 12px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
 }
 
@@ -47,10 +54,11 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  font-size: 0.85rem;
-  color: #9ca3af;
+  font-size: 0.8rem;
+  color: var(--ph-muted2);
   padding: 1rem 0;
-  min-width: 50px;
+  min-width: 48px;
+  font-family: var(--font-body);
 }
 
 .chart-content {
@@ -68,10 +76,11 @@
 .chart-x-axis {
   display: flex;
   justify-content: space-around;
-  font-size: 0.85rem;
-  color: #9ca3af;
+  font-size: 0.8rem;
+  color: var(--ph-muted2);
   margin-top: 1rem;
   padding: 0 2rem;
+  font-family: var(--font-body);
 }
 
 @media (max-width: 768px) {

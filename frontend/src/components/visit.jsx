@@ -3,12 +3,50 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { publicApi } from '../api';
 import { categoryCache } from '../utils/categoryCache';
+import PaperHavenNav from './PaperHavenNav';
+import PaperHavenFooter from './PaperHavenFooter';
 import './Visit/visit.css';
+
+const CATEGORY_ICONS = {
+  'History': '📜', 'Children': '🧸', 'Science Fiction': '🚀',
+  'Self Improvement': '🧘', 'Self-Improvement': '🧘',
+  'Self improvement': '🧘', 'Comics': '🦸', 'Fiction': '📖',
+  'Mystery': '🔍', 'Biography': '👤', 'Education': '🎓',
+  'Romance': '💕', 'Fantasy': '🐉', 'default': '📚'
+};
+
+const TESTIMONIALS = [
+  { name: 'Savannah Nguyen', handle: '@Savannahnguyen', text: '"This book was an absolute page-turner! I couldn\'t put it down and was captivated from start to finish. The plot was engaging and the characters were so well developed."' },
+  { name: 'Devon Lane', handle: '@Devonlane', text: '"This book was an absolute page-turner! I couldn\'t put it down and was captivated from start to finish. The plot was engaging and the characters were so well developed."' },
+  { name: 'Jane Cooper', handle: '@Janecooper', text: '"This book was an absolute page-turner! I couldn\'t put it down and was captivated from start to finish. The plot was engaging and the characters were so well developed."' },
+  { name: 'Nathan Woods', handle: '@HeisNathan', text: '"This book was an absolute page-turner! I couldn\'t put it down and was captivated from start to finish. The plot was engaging and the characters were so well developed."' },
+  { name: 'Ralph Edwards', handle: '@Ralphedwards', text: '"This book was an absolute page-turner! I couldn\'t put it down and was captivated from start to finish. The plot was engaging and the characters were so well developed."' },
+  { name: 'Annette Black', handle: '@Annetteblack', text: '"This book was an absolute page-turner! I couldn\'t put it down and was captivated from start to finish. The plot was engaging and the characters were so well developed."' },
+];
+
+const AUTHORS = [
+  { name: 'Latest from James Clear', avatar: 'https://i.pravatar.cc/40?img=33' },
+  { name: 'Latest from Napoleon Hill', avatar: 'https://i.pravatar.cc/40?img=11' },
+  { name: 'Latest from Robert Kiyosaki', avatar: 'https://i.pravatar.cc/40?img=52' },
+  { name: 'Latest from Brian Tracy', avatar: 'https://i.pravatar.cc/40?img=68' },
+];
+
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400';
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) return imageUrl;
+  return `http://localhost:8080${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+}
+
+function StarRating({ rating = 4.9 }) {
+  return (
+    <span className="stars">
+      {'★'.repeat(Math.round(rating))}{'☆'.repeat(5 - Math.round(rating))}
+    </span>
+  );
+}
 
 export default function Visit() {
   const [query, setQuery] = useState('');
-  const [cartCount, setCartCount] = useState(0);
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [activeCategory, setActiveCategory] = useState('All');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [books, setBooks] = useState([]);
@@ -16,58 +54,26 @@ export default function Visit() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Fetch books and categories from backend
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        // Fetch books
         const booksData = await publicApi.getBooks();
-        
-        // Fetch categories - try multiple strategies
         let categoriesData = [];
-        
-        // Strategy 1: Check localStorage cache first (set by admin)
         const cachedCategories = categoryCache.get();
         if (cachedCategories && cachedCategories.length > 0) {
-          console.log('✅ Visit: Using cached categories:', cachedCategories.length);
           categoriesData = cachedCategories;
         } else {
-          // Strategy 2: Try public API
           try {
             categoriesData = await publicApi.getCategories();
-            categoryCache.save(categoriesData); // Cache for later
-          } catch (err) {
-            // If 401, backend requires auth - use cache or show message
-            if (err.status === 401) {
-              console.warn('⚠️ Visit: Categories require authentication.');
-              console.warn('💡 Visit: Categories will appear after admin logs in and visits Categories page');
-              console.warn('🔧 Visit: Or configure backend SecurityConfig to allow public access');
-            }
-          }
+            categoryCache.save(categoriesData);
+          } catch (err) { /* categories may require auth */ }
         }
-        
-        console.log('📚 Visit: Fetched books from backend:', booksData);
-        console.log('🏷️ Visit: Fetched categories from backend:', categoriesData);
-        console.log('📊 Visit: Categories count:', Array.isArray(categoriesData) ? categoriesData.length : 0);
-        
-        const booksList = Array.isArray(booksData) ? booksData : [];
-        const categoriesList = Array.isArray(categoriesData) ? categoriesData : [];
-        
-        console.log('✅ Visit: Setting books:', booksList.length, 'categories:', categoriesList.length);
-        
-        setBooks(booksList);
-        setCategories(categoriesList);
+        setBooks(Array.isArray(booksData) ? booksData : []);
+        setCategories(Array.isArray(categoriesData) ? categoriesData : []);
       } catch (err) {
-        console.error('❌ Visit: Failed to fetch data:', err);
-        console.error('❌ Visit: Error details:', {
-          message: err.message,
-          status: err.status,
-          isNetworkError: err.isNetworkError
-        });
-        setBooks([]);
-        setCategories([]);
+        console.error('Failed to fetch data:', err);
+        setBooks([]); setCategories([]);
       } finally {
         setLoading(false);
       }
@@ -77,227 +83,304 @@ export default function Visit() {
 
   const filteredBooks = useMemo(() => {
     return books.filter(b => {
-      const categoryOk = activeCategory === 'All' || b.category === activeCategory;
-      const queryOk = !query || (b.title?.toLowerCase().includes(query.toLowerCase()) || b.author?.toLowerCase().includes(query.toLowerCase()));
-      return categoryOk && queryOk;
+      const catOk = activeCategory === 'All' || b.category === activeCategory;
+      const qOk = !query || b.title?.toLowerCase().includes(query.toLowerCase()) || b.author?.toLowerCase().includes(query.toLowerCase());
+      return catOk && qOk;
     });
   }, [activeCategory, query, books]);
 
-  // Persist and apply theme
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+  const heroBooks = books.slice(0, 3);
+  const recommended = books.slice(0, 6);
+  const recentlyAdded = books.slice(0, 5);
+  const bestSellers = books.slice(0, 4);
+  const popularThisMonth = books.slice(0, 4);
 
-  const handleAuthRequired = () => {
-    setShowAuthModal(true);
-  };
-
-  const handleNavigateToLogin = () => {
-    setShowAuthModal(false);
-    navigate('/login');
-  };
-
-  const handleNavigateToRegister = () => {
-    setShowAuthModal(false);
-    navigate('/register');
-  };
-
-  const getImageUrl = (imageUrl) => {
-    if (!imageUrl) return null;
-    // If it's already a full URL, return as is
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) {
-      return imageUrl;
-    }
-    // If it's a relative path, construct the full URL
-    // Try localhost:8080 (Spring Boot backend) first
-    return `http://localhost:8080${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-  };
+  const BG_COLORS = ['#FDEBD0', '#FEF9C3', '#D5F5E3', '#D6EAF8'];
 
   return (
-    <div className="visit">
-      <header className="visit__navbar">
-        <Link to="/" className="visit__brand">📚 <span>BOOKS</span></Link>
-        <nav className="visit__navActions">
-          <button
-            type="button"
-            className="btn btn--ghost"
-            aria-label="Toggle theme"
-            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-            title={theme === 'light' ? 'Switch to dark' : 'Switch to light'}
-          >
-            {theme === 'light' ? '🌙' : '☀️'}
+    <div className="ph-visit">
+      <PaperHavenNav
+        user={null}
+        onSearch={setQuery}
+      />
+
+      {/* ── Hero ── */}
+      <section className="ph-hero">
+        <div className="ph-hero__content">
+          <h1 className="ph-hero__title">Find Your<br />Next Book</h1>
+          <p className="ph-hero__desc">
+            Discover a world where every page brings a new adventure.
+            At BOOKS, we curate a diverse collection of books.
+          </p>
+          <button className="ph-hero__cta" onClick={() => navigate('/login')}>
+            Explore Now
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </button>
-          <button className="btn btn--ghost" onClick={handleAuthRequired}>
-            My Cart <span className="counter">{cartCount}</span>
-          </button>
-          <div className="visit__auth">
-            <Link className="btn btn--outline" to="/login">Login</Link>
-            <Link className="btn btn--primary" to="/register">Register</Link>
+        </div>
+
+        <div>
+          <div className="ph-hero__books">
+            {heroBooks[1] && (
+              <div className="ph-hero__book ph-hero__book--side" style={{ alignSelf: 'flex-end' }}>
+                <img src={getImageUrl(heroBooks[1].imageUrl)} alt={heroBooks[1].title}
+                  onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} />
+              </div>
+            )}
+            {heroBooks[0] && (
+              <div className="ph-hero__book ph-hero__book--main">
+                <img src={getImageUrl(heroBooks[0].imageUrl)} alt={heroBooks[0].title}
+                  onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} />
+              </div>
+            )}
+            {heroBooks[2] && (
+              <div className="ph-hero__book ph-hero__book--side" style={{ alignSelf: 'flex-end' }}>
+                <img src={getImageUrl(heroBooks[2].imageUrl)} alt={heroBooks[2].title}
+                  onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} />
+              </div>
+            )}
           </div>
-        </nav>
-      </header>
-
-      <section 
-        className="visit__hero"
-        style={{
-          background: `linear-gradient(180deg, #00000066, #00000022 60%, #00000000), url('/images/Webpic.png') center/cover no-repeat`
-        }}
-      >
-        <div className="visit__heroContent">
-          <h1>Books That Build Your Future....</h1>
-          <p>Because Every Book Has a Story.</p>
-          <form className="visit__search" onSubmit={(e) => e.preventDefault()}>
-            <input
-              type="search"
-              placeholder="Search by title or author…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <button className="btn btn--primary" type="submit">Search</button>
-          </form>
+          <div className="ph-hero__dots">
+            <div className="ph-hero__dot ph-hero__dot--active" />
+            <div className="ph-hero__dot" />
+            <div className="ph-hero__dot" />
+          </div>
         </div>
       </section>
 
-      <section className="visit__categories">
-        <h2>Browse by category</h2>
-        <div className="visit__chips">
-          <button
-            className={`chip ${activeCategory === 'All' ? 'chip--active' : ''}`}
-            onClick={() => setActiveCategory('All')}
-          >
-            All
-          </button>
+      {/* ── Author Strip ── */}
+      <div className="ph-author-strip">
+        <div className="ph-author-strip__inner">
+          {AUTHORS.map((a, i) => (
+            <div key={i} className="ph-author-item" onClick={() => setShowAuthModal(true)}>
+              <img className="ph-author-item__avatar" src={a.avatar} alt={a.name}
+                onError={e => { e.target.onerror = null; e.target.src = 'https://i.pravatar.cc/40?img=' + i; }} />
+              <span className="ph-author-item__text">{a.name}</span>
+              <span className="ph-author-item__arrow">›</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Main Sections ── */}
+      <div className="ph-sections">
+
+        {/* Recommended For You */}
+        <section className="ph-section">
+          <div className="ph-section-header">
+            <h2 className="ph-section-title">Recommended For You</h2>
+            <button className="ph-section-see-all" onClick={() => setShowAuthModal(true)}>See all ›</button>
+          </div>
           {loading ? (
-            <span style={{ color: '#999', fontSize: '0.9rem' }}>Loading categories...</span>
-          ) : categories.length === 0 ? (
-            <span style={{ color: '#999', fontSize: '0.9rem' }}>No categories available</span>
+            <div className="ph-loading"><div className="ph-spinner" />Loading books...</div>
           ) : (
-            categories.map(cat => (
-              <button
-                key={cat.id}
-                className={`chip ${activeCategory === cat.name ? 'chip--active' : ''}`}
-                onClick={() => setActiveCategory(cat.name)}
-              >
-                {cat.name}
-              </button>
-            ))
-          )}
-        </div>
-      </section>
-
-      <section className="visit__grid">
-        <h2>New arrivals</h2>
-        {loading ? (
-          <p>Loading books...</p>
-        ) : filteredBooks.length === 0 ? (
-          <p>No books available at the moment. Check back soon!</p>
-        ) : (
-          <div className="grid">
-            {filteredBooks.map(book => (
-              <article key={book.id} className="card">
-                <div className="card__media">
-                  {book.salePrice && <span className="badge badge--top">Top sale</span>}
-                  <img 
-                    className="card__image" 
-                    src={getImageUrl(book.imageUrl) || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=600'} 
-                    alt={book.title}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=600';
-                    }}
-                  />
-                </div>
-                <div className="card__body">
-                  <h3>{book.title}</h3>
-                  <p>{book.author}</p>
-                  {book.salePrice ? (
-                    <p className="price">
-                      Rs {Number(book.salePrice).toLocaleString('en-LK', { minimumFractionDigits: 2 })} <span className="price price--old">Rs {Number(book.price).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span>
-                    </p>
-                  ) : (
-                    <p className="price">Rs {Number(book.price).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</p>
-                  )}
-                  <div className="actions">
-                    <Link to={`/book/${book.id}`} className="btn btn--outline btn--sm">Details</Link>
-                    <button className="btn btn--primary btn--sm" onClick={handleAuthRequired}>Buy Now</button>
+            <div className="ph-books-grid">
+              {recommended.map(book => (
+                <div key={book.id} className="ph-book-card">
+                  <div className="ph-book-card__cover">
+                    <img src={getImageUrl(book.imageUrl)} alt={book.title}
+                      onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} />
+                  </div>
+                  <div className="ph-book-card__body">
+                    <div className="ph-book-card__title">{book.title}</div>
+                    <div className="ph-book-card__author">By : {book.author}</div>
+                    <div className="ph-book-card__price-row">
+                      <div>
+                        <span className="ph-book-card__rating"><StarRating /> 4.9</span>
+                        <span className="ph-book-card__price" style={{ marginLeft: 8 }}>
+                          Rs {Number(book.price).toLocaleString('en-LK')}
+                        </span>
+                      </div>
+                    </div>
+                    <button className="ph-book-card__btn" onClick={() => setShowAuthModal(true)}>
+                      Add to cart
+                    </button>
                   </div>
                 </div>
-              </article>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Category */}
+        <section className="ph-section">
+          <div className="ph-section-header">
+            <h2 className="ph-section-title">Category</h2>
+            <button className="ph-section-see-all" onClick={() => setShowAuthModal(true)}>See all ›</button>
+          </div>
+          <div className="ph-categories-row">
+            <button
+              className={`ph-category-chip ${activeCategory === 'All' ? 'ph-category-chip--active' : ''}`}
+              onClick={() => setActiveCategory('All')}
+            >
+              <span className="ph-category-chip__icon">📚</span>
+              All
+              <span className="ph-category-chip__arrow">›</span>
+            </button>
+            {categories.map(cat => (
+              <button
+                key={cat.id}
+                className={`ph-category-chip ${activeCategory === cat.name ? 'ph-category-chip--active' : ''}`}
+                onClick={() => setActiveCategory(cat.name)}
+              >
+                <span className="ph-category-chip__icon">{CATEGORY_ICONS[cat.name] || CATEGORY_ICONS.default}</span>
+                {cat.name}
+                <span className="ph-category-chip__arrow">›</span>
+              </button>
             ))}
           </div>
-        )}
-      </section>
+        </section>
 
-      <footer className="visit__footer">
-        <div className="footerGrid">
-          <div className="footBrand">
-            <h3>📚 BOOKS</h3>
-            <p>Curated reads from across the world. Join thousands of readers discovering new favorites every week.</p>
-            <form className="visit__newsletter" onSubmit={(e)=> e.preventDefault()}>
-              <input type="email" placeholder="Enter your email for deals & updates" aria-label="Email"/>
-              <button className="btn btn--primary" type="submit">Subscribe</button>
-            </form>
+      </div>
+
+      {/* ── Recently Added (cream background section) ── */}
+      <div className="ph-recently-grid" style={{ marginTop: 48 }}>
+        <div className="ph-recently-grid__inner">
+          <div className="ph-section-header">
+            <h2 className="ph-section-title">Recently added</h2>
+            <button className="ph-section-see-all" onClick={() => setShowAuthModal(true)}>See all ›</button>
           </div>
-          <div className="footCol">
-            <h4>Browse</h4>
-            <ul>
-              <li><Link to="/browse">All books</Link></li>
-              <li><button className="linkLike" onClick={()=> setActiveCategory('Fiction')}>Fiction</button></li>
-              <li><button className="linkLike" onClick={()=> setActiveCategory('Sci‑Fi')}>Sci‑Fi</button></li>
-              <li><button className="linkLike" onClick={()=> setActiveCategory('Education')}>Education</button></li>
-            </ul>
+          <div className="ph-recently-books">
+            {recentlyAdded.map(book => (
+              <button key={book.id} className="ph-recently-card" onClick={() => setShowAuthModal(true)}>
+                <div className="ph-recently-card__cover">
+                  <img src={getImageUrl(book.imageUrl)} alt={book.title}
+                    onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} />
+                </div>
+                <div className="ph-recently-card__title">{book.title}</div>
+                <div className="ph-recently-card__author">{book.author}</div>
+                <div className="ph-recently-card__meta">
+                  <span className="ph-recently-card__price">Rs {Number(book.price).toLocaleString('en-LK')}</span>
+                  {book.salePrice && (
+                    <span className="ph-recently-card__old-price">Rs {Number(book.salePrice).toLocaleString('en-LK')}</span>
+                  )}
+                  <span className="ph-recently-card__cart-icon">🛒</span>
+                  <span>4.7</span>
+                </div>
+              </button>
+            ))}
           </div>
-          <div className="footCol">
-            <h4>Help</h4>
-            <ul>
-              <li><button type="button" className="linkLike">Shipping & returns</button></li>
-              <li><button type="button" className="linkLike">Support</button></li>
-              <li><button type="button" className="linkLike">Gift cards</button></li>
-              <li><button type="button" className="linkLike">FAQs</button></li>
-            </ul>
+        </div>
+      </div>
+
+      {/* ── Bestsellers ── */}
+      <div className="ph-sections" style={{ paddingTop: 48 }}>
+        <section className="ph-section">
+          <div className="ph-section-header">
+            <h2 className="ph-section-title">Best seller of all time</h2>
+            <button className="ph-section-see-all" onClick={() => setShowAuthModal(true)}>See all ›</button>
           </div>
-          <div className="footCol">
-            <h4>Company</h4>
-            <ul>
-              <li><button type="button" className="linkLike">About us</button></li>
-              <li><button type="button" className="linkLike">Careers</button></li>
-              <li><button type="button" className="linkLike">Press</button></li>
-            </ul>
+          <div className="ph-bestseller-grid">
+            {bestSellers.map((book, i) => (
+              <div key={book.id} className="ph-bestseller-card" onClick={() => setShowAuthModal(true)}>
+                <div className="ph-bestseller-card__cover" style={{ background: BG_COLORS[i % BG_COLORS.length] }}>
+                  <img src={getImageUrl(book.imageUrl)} alt={book.title}
+                    onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} />
+                  <div className="ph-bestseller-card__ribbon">Read a little</div>
+                  <span className="ph-bestseller-card__link">↗</span>
+                </div>
+                <div className="ph-bestseller-card__info">
+                  <div className="ph-bestseller-card__title">{book.title}</div>
+                  <div className="ph-bestseller-card__by">By: {book.author}</div>
+                  <div className="ph-bestseller-card__price-row">
+                    <div>
+                      <span className="ph-bestseller-card__price">Rs {Number(book.price).toLocaleString('en-LK')}</span>
+                      {book.salePrice && <span className="ph-bestseller-card__old"> Rs {Number(book.salePrice).toLocaleString('en-LK')}</span>}
+                    </div>
+                    <div className="ph-bestseller-card__rating">★ 4.7 🛒</div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="footCol">
-            <h4>Follow</h4>
-            <div className="socialLinks">
-              <button type="button" className="linkLike" aria-label="Twitter">🐦</button>
-              <button type="button" className="linkLike" aria-label="YouTube">▶</button>
-              <button type="button" className="linkLike" aria-label="Instagram">📸</button>
-              <button type="button" className="linkLike" aria-label="Facebook">📘</button>
+        </section>
+
+        {/* Promo Banners */}
+        <div className="ph-promos">
+          {[
+            { pct: '20%', label: 'for comics books!' },
+            { pct: '25%', label: 'for science fiction books!' },
+            { pct: '15%', label: 'for novels!' },
+          ].map((p, i) => (
+            <div key={i} className="ph-promo-card" onClick={() => setShowAuthModal(true)}>
+              <div className="ph-promo-card__text">
+                <div className="ph-promo-card__pct">Flat <span>{p.pct} OFF</span></div>
+                <div className="ph-promo-card__label">{p.label}</div>
+                <div className="ph-promo-card__link">View details →</div>
+              </div>
+              {books[i] && (
+                <div className="ph-promo-card__books">
+                  <img src={getImageUrl(books[i]?.imageUrl)} alt="" onError={e => { e.target.style.display = 'none'; }} />
+                </div>
+              )}
             </div>
-          </div>
+          ))}
         </div>
-        <div className="visit__subfooter">
-          <small>© {new Date().getFullYear()} BOOKS. All rights reserved.</small>
-          <nav className="legalLinks">
-            <button type="button" className="linkLike">Privacy</button>
-            <button type="button" className="linkLike">Terms</button>
-            <button type="button" className="linkLike">Cookies</button>
-          </nav>
-        </div>
-      </footer>
 
-      {/* Authentication Modal */}
+        {/* Popular This Month */}
+        <section className="ph-section">
+          <div className="ph-section-header">
+            <h2 className="ph-section-title">Popular this month</h2>
+            <button className="ph-section-see-all" onClick={() => setShowAuthModal(true)}>See all ›</button>
+          </div>
+          <div className="ph-bestseller-grid">
+            {popularThisMonth.map((book, i) => (
+              <div key={book.id} className="ph-bestseller-card" onClick={() => setShowAuthModal(true)}>
+                <div className="ph-bestseller-card__cover" style={{ background: BG_COLORS[(i + 2) % BG_COLORS.length] }}>
+                  <img src={getImageUrl(book.imageUrl)} alt={book.title}
+                    onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} />
+                </div>
+                <div className="ph-bestseller-card__info">
+                  <div className="ph-bestseller-card__title">{book.title}</div>
+                  <div className="ph-bestseller-card__by">By: {book.author}</div>
+                  <div className="ph-bestseller-card__price-row">
+                    <span className="ph-bestseller-card__price">Rs {Number(book.price).toLocaleString('en-LK')}</span>
+                    {book.salePrice && <span className="ph-bestseller-card__old"> Rs {Number(book.salePrice).toLocaleString('en-LK')}</span>}
+                  </div>
+                  <button className="ph-book-card__btn" style={{ marginTop: 8 }} onClick={e => { e.stopPropagation(); setShowAuthModal(true); }}>Add to cart</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Testimonials */}
+        <section className="ph-section ph-testimonials" style={{ paddingBottom: 20 }}>
+          <h2 className="ph-testimonials-title">Our happy customers</h2>
+          <div className="ph-testimonials-grid">
+            {TESTIMONIALS.map((t, i) => (
+              <div key={i} className="ph-testimonial-card">
+                <div className="ph-testimonial-card__header">
+                  <div className="ph-testimonial-card__user">
+                    <img className="ph-testimonial-card__avatar" src={`https://i.pravatar.cc/40?img=${i + 1}`} alt={t.name}
+                      onError={e => { e.target.onerror = null; e.target.src = 'https://i.pravatar.cc/40?img=' + i; }} />
+                    <div>
+                      <div className="ph-testimonial-card__name">{t.name}</div>
+                      <div className="ph-testimonial-card__handle">{t.handle}</div>
+                    </div>
+                  </div>
+                  <span className="ph-testimonial-card__x">𝕏</span>
+                </div>
+                <p className="ph-testimonial-card__text">{t.text}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <PaperHavenFooter onCategoryClick={setActiveCategory} />
+
+      {/* Auth Modal */}
       {showAuthModal && (
-        <div className="authModal__overlay" onClick={() => setShowAuthModal(false)}>
-          <div className="authModal__content" onClick={(e) => e.stopPropagation()}>
-            <button className="authModal__close" onClick={() => setShowAuthModal(false)} aria-label="Close">✕</button>
-            <div className="authModal__icon">🔒</div>
-            <h2>Authentication Required</h2>
-            <p>Please register or login to add books to your cart and enjoy shopping!</p>
-            <div className="authModal__buttons">
-              <button className="btn btn--primary btn--lg" onClick={handleNavigateToRegister}>
+        <div className="ph-modal-overlay" onClick={() => setShowAuthModal(false)}>
+          <div className="ph-modal ph-auth-modal" onClick={e => e.stopPropagation()}>
+            <div className="ph-auth-modal__icon">🔒</div>
+            <div className="ph-auth-modal__title">Authentication Required</div>
+            <p className="ph-auth-modal__desc">Please register or login to add books to your cart and enjoy shopping!</p>
+            <div className="ph-auth-modal__buttons">
+              <button className="ph-btn ph-btn--primary ph-btn--lg" onClick={() => { setShowAuthModal(false); navigate('/register'); }}>
                 Register Now
               </button>
-              <button className="btn btn--outline btn--lg" onClick={handleNavigateToLogin}>
+              <button className="ph-btn ph-btn--outline ph-btn--lg" onClick={() => { setShowAuthModal(false); navigate('/login'); }}>
                 Login
               </button>
             </div>
@@ -307,4 +390,3 @@ export default function Visit() {
     </div>
   );
 }
-

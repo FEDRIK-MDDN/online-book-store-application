@@ -1,15 +1,36 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../authContext';
 import api, { publicApi, adminApi } from '../../api';
 import { categoryCache } from '../../utils/categoryCache';
+import PaperHavenNav from '../../components/PaperHavenNav';
+import PaperHavenFooter from '../../components/PaperHavenFooter';
 import '../../components/Visit/visit.css';
+
+const CATEGORY_ICONS = {
+  'History': '📜', 'Children': '🧸', 'Science Fiction': '🚀',
+  'Self Improvement': '🧘', 'Self-Improvement': '🧘', 'Self improvement': '🧘',
+  'Comics': '🦸', 'Fiction': '📖', 'Mystery': '🔍',
+  'Biography': '👤', 'Education': '🎓', 'Romance': '💕',
+  'Fantasy': '🐉', 'default': '📚'
+};
+
+const BG_COLORS = ['#FDEBD0', '#FEF9C3', '#D5F5E3', '#D6EAF8'];
+
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400';
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) return imageUrl;
+  return `http://localhost:8080${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+}
+
+function StarRating({ rating = 4.9 }) {
+  return <span className="stars">{'★'.repeat(Math.round(rating))}{'☆'.repeat(5 - Math.round(rating))}</span>;
+}
 
 export default function Home() {
   const [query, setQuery] = useState('');
   const [cartCount, setCartCount] = useState(0);
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [activeCategory, setActiveCategory] = useState('All');
   const [books, setBooks] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -20,426 +41,265 @@ export default function Home() {
   const { user, token, logout } = useAuth();
   const navigate = useNavigate();
 
-  // Load cart count from backend
   useEffect(() => {
-    const loadCartCount = async () => {
-      if (user && token) {
-        try {
-          const cartData = await api.getCart(token);
-          const count = cartData.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
-          setCartCount(count);
-        } catch (err) {
-          console.error('Failed to load cart count:', err);
-        }
-      }
-    };
-    loadCartCount();
+    if (user && token) {
+      api.getCart(token)
+        .then(d => setCartCount(d.items?.reduce((s, i) => s + i.quantity, 0) || 0))
+        .catch(() => { });
+    }
   }, [user, token]);
 
-  // Fetch books and categories from backend
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        // Fetch books
         const booksData = await publicApi.getBooks();
-        
-        // Fetch categories - try multiple strategies
         let categoriesData = [];
-        
-        // Strategy 1: Try cached categories first (from admin session)
-        const cachedCategories = categoryCache.get();
-        if (cachedCategories && cachedCategories.length > 0) {
-          console.log('✅ Home: Using cached categories:', cachedCategories.length);
-          categoriesData = cachedCategories;
+        const cached = categoryCache.get();
+        if (cached && cached.length > 0) {
+          categoriesData = cached;
         } else {
-          // Strategy 2: Try public API
           try {
             categoriesData = await publicApi.getCategories();
-            categoryCache.save(categoriesData); // Cache for next time
+            categoryCache.save(categoriesData);
           } catch (err) {
-            // Strategy 3: If 401 and user logged in, try with token
             if (err.status === 401 && token) {
-              console.log('🔑 Home: Categories require auth, trying with token...');
-              try {
-                categoriesData = await adminApi.getCategories(token);
-                categoryCache.save(categoriesData); // Cache for next time
-              } catch (authErr) {
-                console.warn('⚠️ Home: Failed to fetch categories with auth:', authErr);
-              }
-            } else {
-              console.warn('⚠️ Home: Cannot fetch categories - backend requires authentication');
+              try { categoriesData = await adminApi.getCategories(token); categoryCache.save(categoriesData); } catch { }
             }
           }
         }
-        
-        console.log('📚 Home: Fetched books from backend:', booksData);
-        console.log('🏷️ Home: Fetched categories from backend:', categoriesData);
-        console.log('📊 Home: Categories count:', Array.isArray(categoriesData) ? categoriesData.length : 0);
-        
-        const booksList = Array.isArray(booksData) ? booksData : [];
-        const categoriesList = Array.isArray(categoriesData) ? categoriesData : [];
-        
-        console.log('✅ Home: Setting books:', booksList.length, 'categories:', categoriesList.length);
-        
-        setBooks(booksList);
-        setCategories(categoriesList);
+        setBooks(Array.isArray(booksData) ? booksData : []);
+        setCategories(Array.isArray(categoriesData) ? categoriesData : []);
       } catch (err) {
-        console.error('❌ Home: Failed to fetch data:', err);
-        console.error('❌ Home: Error details:', {
-          message: err.message,
-          status: err.status,
-          isNetworkError: err.isNetworkError
-        });
-        setBooks([]);
-        setCategories([]);
-      } finally {
-        setLoading(false);
-      }
+        console.error('Failed to fetch:', err);
+        setBooks([]); setCategories([]);
+      } finally { setLoading(false); }
     };
     fetchData();
   }, [token]);
 
-  const filteredBooks = useMemo(() => {
-    return books.filter(b => {
-      const categoryOk = activeCategory === 'All' || b.category === activeCategory;
-      const queryOk = !query || (b.title.toLowerCase().includes(query.toLowerCase()) || b.author.toLowerCase().includes(query.toLowerCase()));
-      return categoryOk && queryOk;
-    });
-  }, [activeCategory, query, books]);
+  const filteredBooks = useMemo(() => books.filter(b => {
+    const catOk = activeCategory === 'All' || b.category === activeCategory;
+    const qOk = !query || b.title?.toLowerCase().includes(query.toLowerCase()) || b.author?.toLowerCase().includes(query.toLowerCase());
+    return catOk && qOk;
+  }), [activeCategory, query, books]);
 
-  // Persist and apply theme
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  const handleAddToCart = (book) => {
-    setSelectedBook(book);
-    setQuantity(1);
-    setShowBuyModal(true);
-  };
-
-  const handleCloseBuyModal = () => {
-    setShowBuyModal(false);
-    setSelectedBook(null);
-    setQuantity(1);
-  };
-
-  const handleQuantityChange = (delta) => {
-    setQuantity(prev => {
-      const newQty = prev + delta;
-      return newQty < 1 ? 1 : (selectedBook?.stock && newQty > selectedBook.stock ? selectedBook.stock : newQty);
-    });
-  };
+  const handleAddToCart = (book) => { setSelectedBook(book); setQuantity(1); setShowBuyModal(true); };
+  const handleCloseBuyModal = () => { setShowBuyModal(false); setSelectedBook(null); setQuantity(1); };
 
   const handleConfirmAddToCart = async () => {
-    if (selectedBook) {
-      if (!user || !token) {
-        alert('Please login to add items to cart');
-        navigate('/login');
-        return;
-      }
-
-      try {
-        // Add to cart via backend API
-        await api.addToCart(token, selectedBook.id, quantity);
-        
-        // Reload cart count
-        const cartData = await api.getCart(token);
-        const count = cartData.items?.reduce((sum, item) => sum + item.quantity, 0) || 0;
-        setCartCount(count);
-        
-        handleCloseBuyModal();
-        
-        // Navigate to cart page
-        navigate('/cart');
-      } catch (err) {
-        console.error('Failed to add to cart:', err);
-        alert('Failed to add item to cart. Please try again.');
-      }
-    }
+    if (!selectedBook) return;
+    if (!user || !token) { navigate('/login'); return; }
+    try {
+      await api.addToCart(token, selectedBook.id, quantity);
+      const cartData = await api.getCart(token);
+      setCartCount(cartData.items?.reduce((s, i) => s + i.quantity, 0) || 0);
+      handleCloseBuyModal();
+      navigate('/cart');
+    } catch (err) { alert('Failed to add to cart. Please try again.'); }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/', { replace: true });
-  };
+  const handleLogout = () => { logout(); navigate('/', { replace: true }); };
 
-  const getImageUrl = (imageUrl) => {
-    if (!imageUrl) return 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=600';
-    // If it's already a full URL, return as is
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) {
-      return imageUrl;
-    }
-    // If it's a relative path, construct the full URL pointing to Spring Boot backend
-    return `http://localhost:8080${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-  };
+  const recommended = filteredBooks.slice(0, 6);
+  const recentlyAdded = filteredBooks.slice(0, 5);
+  const bestSellers = filteredBooks.slice(0, 4);
+  const popularThisMonth = filteredBooks.slice(2, 6);
 
   return (
-    <div className="visit">
-      <header className="visit__navbar">
-        <Link to="/home" className="visit__brand">📚 <span>BOOKS</span></Link>
-        <nav className="visit__navActions">
-          <button
-            type="button"
-            className="btn btn--ghost"
-            aria-label="Toggle theme"
-            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-            title={theme === 'light' ? 'Switch to dark' : 'Switch to light'}
-          >
-            {theme === 'light' ? '🌙' : '☀️'}
+    <div className="ph-visit">
+      <PaperHavenNav
+        user={user}
+        cartCount={cartCount}
+        onLogout={handleLogout}
+        onSearch={setQuery}
+        activeLink="home"
+        categories={categories}
+        onCategorySelect={setActiveCategory}
+        activeCategory={activeCategory}
+      />
+
+      {/* ── Hero ── */}
+      <section className="ph-hero">
+        <div className="ph-hero__content">
+          <h1 className="ph-hero__title">Find Your<br />Next Book</h1>
+          <p className="ph-hero__desc">
+            Welcome back, <strong>{user?.name || 'Reader'}</strong>! Continue your journey
+            through amazing stories. At BOOKS, we curate a diverse collection of books.
+          </p>
+          <button className="ph-hero__cta" onClick={() => document.getElementById('ph-recommended')?.scrollIntoView({ behavior: 'smooth' })}>
+            Explore Now
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7" /></svg>
           </button>
-          <Link className="btn btn--ghost" to="/cart">
-            My Cart <span className="counter">{cartCount}</span>
-          </Link>
-          <div className="visit__auth">
-            <Link className="btn btn--ghost" to="/profile">👤 {user?.name || user?.email}</Link>
-            <button className="btn btn--outline" onClick={handleLogout}>Logout</button>
+        </div>
+        <div>
+          <div className="ph-hero__books">
+            {books[1] && <div className="ph-hero__book ph-hero__book--side" style={{ alignSelf: 'flex-end' }}><img src={getImageUrl(books[1].imageUrl)} alt={books[1].title} onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} /></div>}
+            {books[0] && <div className="ph-hero__book ph-hero__book--main"><img src={getImageUrl(books[0].imageUrl)} alt={books[0].title} onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} /></div>}
+            {books[2] && <div className="ph-hero__book ph-hero__book--side" style={{ alignSelf: 'flex-end' }}><img src={getImageUrl(books[2].imageUrl)} alt={books[2].title} onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} /></div>}
           </div>
-        </nav>
-      </header>
-
-      <section 
-        className="visit__hero"
-        style={{
-          background: `linear-gradient(180deg, #00000066, #00000022 60%, #00000000), url('/images/Webpic.png') center/cover no-repeat`
-        }}
-      >
-        <div className="visit__heroContent">
-          <h1>Welcome back, {user?.name || 'Reader'}!</h1>
-          <p>Continue your journey through amazing stories.</p>
-          <form className="visit__search" onSubmit={(e) => e.preventDefault()}>
-            <input
-              type="search"
-              placeholder="Search by title or author…"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-            <button className="btn btn--primary" type="submit">Search</button>
-          </form>
+          <div className="ph-hero__dots">
+            <div className="ph-hero__dot ph-hero__dot--active" />
+            <div className="ph-hero__dot" /><div className="ph-hero__dot" />
+          </div>
         </div>
       </section>
 
-      <section className="visit__categories">
-        <h2>Browse by category</h2>
-        <div className="visit__chips">
-          <button
-            className={`chip ${activeCategory === 'All' ? 'chip--active' : ''}`}
-            onClick={() => setActiveCategory('All')}
-          >
-            All
-          </button>
+      {/* ── Main Sections ── */}
+      <div className="ph-sections">
+
+        {/* Recommended */}
+        <section className="ph-section" id="ph-recommended">
+          <div className="ph-section-header">
+            <h2 className="ph-section-title">Recommended For You</h2>
+            <button className="ph-section-see-all">See all ›</button>
+          </div>
           {loading ? (
-            <span style={{ color: '#999', fontSize: '0.9rem' }}>Loading categories...</span>
-          ) : categories.length === 0 ? (
-            <span style={{ color: '#999', fontSize: '0.9rem' }}>No categories available</span>
+            <div className="ph-loading"><div className="ph-spinner" />Loading books...</div>
+          ) : recommended.length === 0 ? (
+            <p style={{ color: 'var(--ph-muted)', textAlign: 'center', padding: '40px 0' }}>No books found. Check back soon!</p>
           ) : (
-            categories.map(cat => (
-              <button
-                key={cat.id}
-                className={`chip ${activeCategory === cat.name ? 'chip--active' : ''}`}
-                onClick={() => setActiveCategory(cat.name)}
-              >
-                {cat.name}
-              </button>
-            ))
-          )}
-        </div>
-      </section>
-
-      <section className="visit__grid">
-        <h2>New arrivals</h2>
-        {loading ? (
-          <p>Loading books...</p>
-        ) : filteredBooks.length === 0 ? (
-          <p>No books available at the moment. Check back soon!</p>
-        ) : (
-          <div className="grid">
-            {filteredBooks.map(book => (
-              <article key={book.id} className="card">
-                <div className="card__media">
-                  {book.salePrice && <span className="badge badge--top">Top sale</span>}
-                  <img 
-                    className="card__image" 
-                    src={getImageUrl(book.imageUrl)} 
-                    alt={book.title}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=600';
-                    }}
-                  />
-                </div>
-                <div className="card__body">
-                  <h3>{book.title}</h3>
-                  <p>{book.author}</p>
-                  {book.salePrice ? (
-                    <p className="price">
-                      Rs {Number(book.salePrice).toLocaleString('en-LK', { minimumFractionDigits: 2 })} <span className="price price--old">Rs {Number(book.price).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</span>
-                    </p>
-                  ) : (
-                    <p className="price">Rs {Number(book.price).toLocaleString('en-LK', { minimumFractionDigits: 2 })}</p>
-                  )}
-                  <div className="actions">
-                    <Link to={`/book/${book.id}`} className="btn btn--outline btn--sm">Details</Link>
-                    <button className="btn btn--primary btn--sm" onClick={() => handleAddToCart(book)}>Buy Now</button>
+            <div className="ph-books-grid">
+              {recommended.map(book => (
+                <div key={book.id} className="ph-book-card">
+                  <div className="ph-book-card__cover">
+                    {book.salePrice && <span className="ph-book-card__badge">SALE</span>}
+                    <img src={getImageUrl(book.imageUrl)} alt={book.title} onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} />
+                  </div>
+                  <div className="ph-book-card__body">
+                    <div className="ph-book-card__title">{book.title}</div>
+                    <div className="ph-book-card__author">By : {book.author}</div>
+                    <div className="ph-book-card__rating"><StarRating /> 4.9</div>
+                    <div className="ph-book-card__price-row">
+                      <div>
+                        <span className="ph-book-card__price">Rs {Number(book.salePrice || book.price).toLocaleString('en-LK')}</span>
+                        {book.salePrice && <span className="ph-book-card__price-old">Rs {Number(book.price).toLocaleString('en-LK')}</span>}
+                      </div>
+                    </div>
+                    <button className="ph-book-card__btn" onClick={() => handleAddToCart(book)}>Add to cart</button>
                   </div>
                 </div>
-              </article>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* Recently Added */}
+      <div className="ph-recently-grid" style={{ marginTop: 48 }}>
+        <div className="ph-recently-grid__inner">
+          <div className="ph-section-header">
+            <h2 className="ph-section-title">Recently added</h2>
+            <button className="ph-section-see-all">See all ›</button>
+          </div>
+          <div className="ph-recently-books">
+            {recentlyAdded.map(book => (
+              <button key={book.id} className="ph-recently-card" onClick={() => handleAddToCart(book)}>
+                <div className="ph-recently-card__cover">
+                  <img src={getImageUrl(book.imageUrl)} alt={book.title} onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} />
+                </div>
+                <div className="ph-recently-card__title">{book.title}</div>
+                <div className="ph-recently-card__author">{book.author}</div>
+                <div className="ph-recently-card__meta">
+                  <span className="ph-recently-card__price">Rs {Number(book.salePrice || book.price).toLocaleString('en-LK')}</span>
+                  {book.salePrice && <span className="ph-recently-card__old-price">Rs {Number(book.price).toLocaleString('en-LK')}</span>}
+                  <span className="ph-recently-card__cart-icon">🛒</span> <span>4.7</span>
+                </div>
+              </button>
             ))}
           </div>
-        )}
-      </section>
-
-      <footer className="visit__footer">
-        <div className="footerGrid">
-          <div className="footBrand">
-            <h3>📚 BOOKS</h3>
-            <p>Curated reads from across the world. Join thousands of readers discovering new favorites every week.</p>
-            <form className="visit__newsletter" onSubmit={(e)=> e.preventDefault()}>
-              <input type="email" placeholder="Enter your email for deals & updates" aria-label="Email"/>
-              <button className="btn btn--primary" type="submit">Subscribe</button>
-            </form>
-          </div>
-          <div className="footCol">
-            <h4>Browse</h4>
-            <ul>
-              <li><Link to="/browse">All books</Link></li>
-              <li><button className="linkLike" onClick={()=> setActiveCategory('Fiction')}>Fiction</button></li>
-              <li><button className="linkLike" onClick={()=> setActiveCategory('Sci‑Fi')}>Sci‑Fi</button></li>
-              <li><button className="linkLike" onClick={()=> setActiveCategory('Education')}>Education</button></li>
-            </ul>
-          </div>
-          <div className="footCol">
-            <h4>Help</h4>
-            <ul>
-              <li><button type="button" className="linkLike">Shipping & returns</button></li>
-              <li><button type="button" className="linkLike">Support</button></li>
-              <li><button type="button" className="linkLike">Gift cards</button></li>
-              <li><button type="button" className="linkLike">FAQs</button></li>
-            </ul>
-          </div>
-          <div className="footCol">
-            <h4>Company</h4>
-            <ul>
-              <li><button type="button" className="linkLike">About us</button></li>
-              <li><button type="button" className="linkLike">Careers</button></li>
-              <li><button type="button" className="linkLike">Press</button></li>
-            </ul>
-          </div>
-          <div className="footCol">
-            <h4>Follow</h4>
-            <div className="socialLinks">
-              <button type="button" className="linkLike" aria-label="Twitter">🐦</button>
-              <button type="button" className="linkLike" aria-label="YouTube">▶</button>
-              <button type="button" className="linkLike" aria-label="Instagram">📸</button>
-              <button type="button" className="linkLike" aria-label="Facebook">📘</button>
-            </div>
-          </div>
         </div>
-        <div className="visit__subfooter">
-          <small>© {new Date().getFullYear()} BOOKS. All rights reserved.</small>
-          <nav className="legalLinks">
-            <button type="button" className="linkLike">Privacy</button>
-            <button type="button" className="linkLike">Terms</button>
-            <button type="button" className="linkLike">Cookies</button>
-          </nav>
-        </div>
-      </footer>
+      </div>
 
-      {/* Buy Now Modal */}
-      {showBuyModal && selectedBook && (
-        <div className="modal-overlay" onClick={handleCloseBuyModal}>
-          <div className="modal-content buy-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{selectedBook.title}</h2>
-              <button className="modal-close-btn" onClick={handleCloseBuyModal}>×</button>
-            </div>
-            
-            <div className="modal-body">
-              <div className="book-image-container">
-                <img 
-                  src={getImageUrl(selectedBook.imageUrl)} 
-                  alt={selectedBook.title}
-                  className="modal-book-image"
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=600';
-                  }}
-                />
-              </div>
-
-              <div className="product-details-section">
-                <h3>Product Details</h3>
-                <p className="product-description">{selectedBook.description || 'Good book for kids'}</p>
-              </div>
-
-              <div className="price-section">
-                <h3>Price</h3>
-                <p className="modal-price">LKR {Number(selectedBook.price).toFixed(2)}</p>
-              </div>
-
-              <div className="availability-section">
-                <h3>Availability</h3>
-                <p className={`availability-status ${selectedBook.available ? 'in-stock' : 'out-of-stock'}`}>
-                  {selectedBook.available ? '● In Stock & Available' : '● Out of Stock'}
-                </p>
-              </div>
-
-              <div className="quantity-section">
-                <h3>Quantity</h3>
-                <div className="quantity-controls">
-                  <button 
-                    className="qty-btn" 
-                    onClick={() => handleQuantityChange(-1)}
-                    disabled={quantity <= 1}
-                  >
-                    −
-                  </button>
-                  <input 
-                    type="number" 
-                    className="qty-input" 
-                    value={quantity}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value) || 1;
-                      setQuantity(val < 1 ? 1 : val);
-                    }}
-                    min="1"
-                    max={selectedBook.stock || 999}
-                  />
-                  <button 
-                    className="qty-btn" 
-                    onClick={() => handleQuantityChange(1)}
-                    disabled={selectedBook.stock && quantity >= selectedBook.stock}
-                  >
-                    +
-                  </button>
+      <div className="ph-sections" style={{ paddingTop: 48 }}>
+        {/* Best sellers */}
+        <section className="ph-section">
+          <div className="ph-section-header">
+            <h2 className="ph-section-title">Best seller of all time</h2>
+            <button className="ph-section-see-all">See all ›</button>
+          </div>
+          <div className="ph-bestseller-grid">
+            {bestSellers.map((book, i) => (
+              <div key={book.id} className="ph-bestseller-card">
+                <div className="ph-bestseller-card__cover" style={{ background: BG_COLORS[i % BG_COLORS.length] }}>
+                  <img src={getImageUrl(book.imageUrl)} alt={book.title} onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} />
+                  <div className="ph-bestseller-card__ribbon">Read a little</div>
+                </div>
+                <div className="ph-bestseller-card__info">
+                  <div className="ph-bestseller-card__title">{book.title}</div>
+                  <div className="ph-bestseller-card__by">By: {book.author}</div>
+                  <div className="ph-bestseller-card__price-row">
+                    <div>
+                      <span className="ph-bestseller-card__price">Rs {Number(book.salePrice || book.price).toLocaleString('en-LK')}</span>
+                      {book.salePrice && <span className="ph-bestseller-card__old"> Rs {Number(book.price).toLocaleString('en-LK')}</span>}
+                    </div>
+                    <div className="ph-bestseller-card__rating">★ 4.7 <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem' }} onClick={() => handleAddToCart(book)}>🛒</button></div>
+                  </div>
                 </div>
               </div>
+            ))}
+          </div>
+        </section>
 
-              <div className="added-date-section">
-                <h3>Added on</h3>
-                <p className="added-date">
-                  {selectedBook.createdAt 
-                    ? new Date(selectedBook.createdAt).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })
-                    : 'December 29, 2025'
-                  }
+        {/* Popular This Month */}
+        <section className="ph-section">
+          <div className="ph-section-header">
+            <h2 className="ph-section-title">Popular this month</h2>
+            <button className="ph-section-see-all">See all ›</button>
+          </div>
+          <div className="ph-bestseller-grid">
+            {popularThisMonth.map((book, i) => (
+              <div key={book.id} className="ph-bestseller-card">
+                <div className="ph-bestseller-card__cover" style={{ background: BG_COLORS[(i + 1) % BG_COLORS.length] }}>
+                  <img src={getImageUrl(book.imageUrl)} alt={book.title} onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} />
+                </div>
+                <div className="ph-bestseller-card__info">
+                  <div className="ph-bestseller-card__title">{book.title}</div>
+                  <div className="ph-bestseller-card__by">By: {book.author}</div>
+                  <div style={{ marginTop: 6 }}>
+                    <span className="ph-bestseller-card__price">Rs {Number(book.salePrice || book.price).toLocaleString('en-LK')}</span>
+                    {book.salePrice && <span className="ph-bestseller-card__old"> Rs {Number(book.price).toLocaleString('en-LK')}</span>}
+                  </div>
+                  <button className="ph-book-card__btn" style={{ marginTop: 8 }} onClick={() => handleAddToCart(book)}>Add to cart</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <PaperHavenFooter onCategoryClick={setActiveCategory} />
+
+      {/* Buy Modal */}
+      {showBuyModal && selectedBook && (
+        <div className="ph-modal-overlay" onClick={handleCloseBuyModal}>
+          <div className="ph-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
+            <div className="ph-modal__header">
+              <div className="ph-modal__title" style={{ fontFamily: 'var(--font-heading)' }}>{selectedBook.title}</div>
+              <button className="ph-modal__close" onClick={handleCloseBuyModal}>×</button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: 20 }}>
+              <img src={getImageUrl(selectedBook.imageUrl)} alt={selectedBook.title} style={{ borderRadius: 8, width: '100%', aspectRatio: '3/4', objectFit: 'cover' }} onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }} />
+              <div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--ph-muted)', lineHeight: 1.6, marginBottom: 12 }}>{selectedBook.description || 'A wonderful read for all ages.'}</p>
+                <p style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--ph-gold)', marginBottom: 8 }}>
+                  Rs {Number(selectedBook.price).toFixed(2)}
                 </p>
+                <p style={{ fontSize: '0.8rem', color: selectedBook.available !== false ? 'var(--ph-green)' : 'var(--ph-red)', marginBottom: 12 }}>
+                  ● {selectedBook.available !== false ? 'In Stock & Available' : 'Out of Stock'}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                  <button style={{ width: 32, height: 32, border: '1.5px solid var(--ph-border2)', borderRadius: 6, fontSize: '1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={quantity <= 1}>−</button>
+                  <span style={{ minWidth: 32, textAlign: 'center', fontWeight: 600 }}>{quantity}</span>
+                  <button style={{ width: 32, height: 32, border: '1.5px solid var(--ph-border2)', borderRadius: 6, fontSize: '1.2rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setQuantity(q => q + 1)}>+</button>
+                </div>
               </div>
             </div>
-
-            <div className="modal-footer">
-              <button className="btn-add-to-cart" onClick={handleConfirmAddToCart}>
+            <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+              <button className="ph-btn ph-btn--primary" style={{ flex: 1 }} onClick={handleConfirmAddToCart}>
                 Add to Cart ({quantity})
               </button>
-              <button className="btn-close-modal" onClick={handleCloseBuyModal}>
-                Close
-              </button>
+              <button className="ph-btn ph-btn--outline" onClick={handleCloseBuyModal}>Close</button>
             </div>
           </div>
         </div>

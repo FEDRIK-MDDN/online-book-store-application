@@ -1,20 +1,12 @@
-// Lightweight API client for auth-related requests.
-// Strategy:
-// 1. If REACT_APP_API_URL set, try that first.
-// 2. Else use relative path (CRA proxy) then fall back to http://localhost:8080 and http://127.0.0.1:8080.
-// This reduces friction with CORS and still recovers if proxy misconfigured.
+// Lightweight API client — targets Spring Boot backend at :8080.
+// Override with REACT_APP_API_URL env var if backend runs elsewhere.
 const explicit = process.env.REACT_APP_API_URL ? process.env.REACT_APP_API_URL.replace(/\/$/, '') : '';
-// Use Spring Boot backend as primary, fallback to mock servers for development
+// Direct backend URLs — no relative proxy needed since CRA proxy is not configured
 const BASE_CANDIDATES = explicit
   ? [explicit]
   : [
-      '', // relative (CRA proxy)
       'http://localhost:8080',  // Spring Boot backend (primary)
-      'http://127.0.0.1:8080',
-      'http://localhost:5051',  // Mock API fallback
-      'http://127.0.0.1:5051',
-      'http://localhost:5050',
-      'http://127.0.0.1:5050',
+      'http://127.0.0.1:8080', // fallback alias
     ];
 
 async function request(path, { method = 'GET', body, headers, useFormData = false } = {}) {
@@ -58,19 +50,16 @@ async function request(path, { method = 'GET', body, headers, useFormData = fals
       }
       return data;
     } catch (err) {
-      // Only proceed to next candidate on network-type errors or auth failures (401/403)
-      // Auth failures indicate the backend exists but doesn't have the right endpoints/tokens
+      // Proceed to next candidate only on network errors — not on logical errors (4xx/5xx from backend)
       const isNetwork = err.isNetworkError || err.status == null;
-      const isAuthFailure = err.status === 401 || err.status === 403;
-      if (isNetwork || isAuthFailure) {
+      if (isNetwork) {
         lastError = err;
         if (process.env.NODE_ENV === 'development') {
-          const reason = isAuthFailure ? 'auth failure' : 'network failure';
-          console.debug(`[api] ${reason}, trying next base`, { failedBase: base || '<relative>', status: err.status, error: err.message });
+          console.debug('[api] network failure, trying next base', { failedBase: base, status: err.status, error: err.message });
         }
         continue;
       }
-      throw err; // logical/server error, stop early
+      throw err; // logical/server error (401, 403, 404, 500…), stop early
     }
   }
   const basesTried = BASE_CANDIDATES.map(b => b || '<relative>').join(', ');
@@ -81,9 +70,12 @@ async function request(path, { method = 'GET', body, headers, useFormData = fals
 }
 
 function extractAuth(data) {
-  // Support Spring Boot backend response format and mock-api fallback
-  const user = data.user || data.data?.user || data.profile || data.userDto || (data.id && data.email ? data : null);
+  // Spring Boot backend returns a flat UserDto with jwtToken field.
+  // The user object IS the data itself (id, name, email, role, jwtToken, profileImageUrl).
   const token = data.jwtToken || data.token || data.accessToken || data.jwt || data.data?.token || null;
+  // If backend returns a flat user object (has id + email), use it directly
+  const user = data.user || data.data?.user || data.profile || data.userDto ||
+    (data.id != null && data.email ? { id: data.id, name: data.name, email: data.email, role: data.role, profileImageUrl: data.profileImageUrl, verified: data.verified } : null);
   return { user, token, raw: data };
 }
 
@@ -96,11 +88,9 @@ export const api = {
     return extractAuth(data);
   },
   login: async ({ email, password }) => {
-    // Spring Boot backend uses /users/login endpoint with form data
-    const data = await request('/users/login', {
+    const data = await request('/users/login/body', {
       method: 'POST',
       body: { email, password },
-      useFormData: true,
     });
     return extractAuth(data);
   },

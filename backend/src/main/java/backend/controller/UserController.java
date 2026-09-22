@@ -23,6 +23,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/users")
+@CrossOrigin(origins = "*")
 @Validated
 public class UserController {
 
@@ -45,6 +46,17 @@ public class UserController {
     public UserDto login(@RequestParam String email,
                          @RequestParam String password) {
         return service.login(email, password);
+    }
+
+    // JSON body variant used by the frontend (avoids a separate AuthController bean conflict)
+    public static class LoginRequest {
+        public String email;
+        public String password;
+    }
+
+    @PostMapping("/login/body")
+    public UserDto loginBody(@RequestBody LoginRequest body) {
+        return service.login(body.email, body.password);
     }
 
     @PostMapping("/password-reset/request")

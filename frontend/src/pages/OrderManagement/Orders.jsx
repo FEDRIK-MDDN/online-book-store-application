@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../authContext';
 import api from '../../api';
+import PaperHavenNav from '../../components/PaperHavenNav';
 import './Orders.css';
 
 export default function Orders() {
@@ -9,7 +10,6 @@ export default function Orders() {
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const [showInvoiceModal, setShowInvoiceModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showBuyModal, setShowBuyModal] = useState(false);
@@ -26,10 +26,6 @@ export default function Orders() {
     loadOrders();
   }, []);
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
 
   useEffect(() => {
     filterOrders();
@@ -41,10 +37,10 @@ export default function Orders() {
       const ordersData = await api.getUserOrders(token);
       console.log('=== ORDERS DEBUG ===');
       console.log('Raw response:', ordersData);
-      
+
       // Handle different response formats
       let ordersArray = [];
-      
+
       if (Array.isArray(ordersData)) {
         ordersArray = ordersData;
       } else if (ordersData && typeof ordersData === 'object') {
@@ -64,14 +60,14 @@ export default function Orders() {
         } else {
           // Try common property names
           ordersArray = ordersData.orders || ordersData.data || ordersData.content || [];
-          
+
           // If still not found, check if the object itself is the order
           if (ordersArray.length === 0 && ordersData.id) {
             ordersArray = [ordersData];
           }
         }
       }
-      
+
       console.log('Processed orders array:', ordersArray);
       console.log('Orders count:', ordersArray.length);
       if (ordersArray.length > 0) {
@@ -171,15 +167,15 @@ export default function Orders() {
 
     // Filter by status
     if (activeTab === 'completed') {
-      filtered = filtered.filter(order => 
+      filtered = filtered.filter(order =>
         order.orderStatus === 'delivered' || order.paymentStatus === 'completed'
       );
     } else if (activeTab === 'cancelled') {
-      filtered = filtered.filter(order => 
+      filtered = filtered.filter(order =>
         order.orderStatus === 'cancelled'
       );
     } else if (activeTab === 'summary') {
-      filtered = filtered.filter(order => 
+      filtered = filtered.filter(order =>
         order.orderStatus === 'pending' || order.orderStatus === 'processing'
       );
     }
@@ -253,7 +249,7 @@ export default function Orders() {
       rating: book.rating,
       createdAt: book.createdAt || book.publishedDate || book.addedDate || item.createdAt || new Date().toISOString()
     };
-    
+
     setSelectedBook(bookDetails);
     setQuantity(1);
     setShowBuyModal(true);
@@ -283,9 +279,9 @@ export default function Orders() {
       try {
         // Add to cart via backend API
         await api.addToCart(token, selectedBook.id, quantity);
-        
+
         handleCloseBuyModal();
-        
+
         // Navigate to cart page
         navigate('/cart');
       } catch (err) {
@@ -296,59 +292,34 @@ export default function Orders() {
   };
 
   return (
-    <div className="orders-page">
-      <header className="cart-navbar">
-        <Link to="/home" className="cart-brand">📚 <span>BOOKS</span></Link>
-        <nav className="cart-nav-links">
-          <Link to="/home">Home</Link>
-          <Link to="/cart">🛒 Cart</Link>
-          <Link to="/checkout">💳 Checkout</Link>
-          <Link to="/orders" className="active">📦 My Orders</Link>
-        </nav>
-        <div className="cart-nav-actions">
-          <input
-            type="search"
-            placeholder="Search..."
-            className="cart-search"
-          />
-          <button
-            type="button"
-            className="btn btn--ghost"
-            aria-label="Toggle theme"
-            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-          >
-            {theme === 'light' ? '🌙' : '☀️'}
-          </button>
-          <Link className="btn btn--ghost" to="/profile">👤 {user?.name || user?.email}</Link>
-          <button className="btn btn--outline" onClick={handleLogout}>Logout</button>
-        </div>
-      </header>
+    <div className="ph-orders-page">
+      <PaperHavenNav user={user} onLogout={handleLogout} />
 
-      <div className="orders-container">
+      <div className="ph-orders-main">
         <div className="orders-header">
           <h1>Order History</h1>
-          
+
           <div className="orders-filters">
             <div className="filter-tabs">
-              <button 
+              <button
                 className={`filter-tab ${activeTab === 'all' ? 'active' : ''}`}
                 onClick={() => setActiveTab('all')}
               >
                 All Order
               </button>
-              <button 
+              <button
                 className={`filter-tab ${activeTab === 'summary' ? 'active' : ''}`}
                 onClick={() => setActiveTab('summary')}
               >
                 Summary
               </button>
-              <button 
+              <button
                 className={`filter-tab ${activeTab === 'completed' ? 'active' : ''}`}
                 onClick={() => setActiveTab('completed')}
               >
                 Completed
               </button>
-              <button 
+              <button
                 className={`filter-tab ${activeTab === 'cancelled' ? 'active' : ''}`}
                 onClick={() => setActiveTab('cancelled')}
               >
@@ -398,7 +369,7 @@ export default function Orders() {
                     <p className="order-date">Order Payment : {formatDate(order.orderDate || order.createdAt)}</p>
                   </div>
                   <div className="order-actions">
-                    <button 
+                    <button
                       className="btn-show-invoice"
                       onClick={() => viewInvoice(order)}
                     >
@@ -415,12 +386,12 @@ export default function Orders() {
                     const author = book.author || item.author || 'Unknown';
                     const imageUrl = book.imageUrl || item.imageUrl;
                     const price = item.unitPrice || item.price || 0;
-                    
+
                     return (
                       <div key={index} className="order-item">
                         <div className="item-image">
-                          <img 
-                            src={getImageUrl(imageUrl) || '/images/book-placeholder.jpg'} 
+                          <img
+                            src={getImageUrl(imageUrl) || '/images/book-placeholder.jpg'}
                             alt={bookTitle}
                             onError={(e) => { e.target.src = '/images/book-placeholder.jpg'; }}
                           />
@@ -444,7 +415,7 @@ export default function Orders() {
                             <span className="delivery-label">Delivery Expected by</span>
                             <span className="delivery-date">{formatDate(order.expectedDeliveryDate || order.orderDate)}</span>
                           </div>
-                          <button 
+                          <button
                             className="btn-buy-again"
                             onClick={() => handleBuyNowClick(item)}
                             title="Buy this book again"
@@ -460,7 +431,7 @@ export default function Orders() {
                 <div className="order-footer">
                   <div className="order-actions">
                     {order.orderStatus !== 'cancelled' && order.orderStatus !== 'delivered' && (
-                      <button 
+                      <button
                         className="btn-cancel-order"
                         onClick={() => cancelOrder(order.id)}
                         disabled={order.orderStatus === 'completed'}
@@ -468,7 +439,7 @@ export default function Orders() {
                         ✕ cancel order
                       </button>
                     )}
-                    <button 
+                    <button
                       className="btn-delete-order"
                       onClick={() => deleteOrder(order.id)}
                       style={{ marginLeft: '10px' }}
@@ -494,40 +465,43 @@ export default function Orders() {
         <div className="modal-overlay" onClick={() => setShowInvoiceModal(false)}>
           <div className="modal-content invoice-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Invoice</h2>
+              <h2>📄 Invoice</h2>
               <button className="close-btn" onClick={() => setShowInvoiceModal(false)}>✕</button>
             </div>
-            
+
             <div id="invoice-content" className="invoice-content">
+              {/* Store Header */}
               <div className="invoice-header">
                 <h1>📚 BOOKS Online Store</h1>
-                <p style={{fontSize: '14px', margin: '10px 0'}}>123 Main Street, Colombo 00100, Sri Lanka</p>
-                <p style={{fontSize: '14px', margin: '5px 0'}}>Phone: +94 11 234 5678 | Email: info@bookstore.lk</p>
-                <p style={{fontSize: '18px', fontWeight: 'bold', marginTop: '15px'}}>Invoice #{selectedOrder.orderNumber || selectedOrder.id}</p>
+                <p>123 Main Street, Colombo 00100, Sri Lanka</p>
+                <p>Phone: +94 11 234 5678 &nbsp;|&nbsp; Email: info@bookstore.lk</p>
+                <p>Invoice #{selectedOrder.orderNumber || selectedOrder.id}</p>
               </div>
 
-              <div className="invoice-info" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px'}}>
+              {/* Customer & Payment Info */}
+              <div className="invoice-info">
                 <div>
-                  <h3 style={{marginBottom: '10px', color: 'var(--primary)'}}>Customer Information</h3>
+                  <h3>Customer Information</h3>
                   <p><strong>Name:</strong> {user?.name || 'N/A'}</p>
                   <p><strong>Email:</strong> {user?.email || 'N/A'}</p>
                   <p><strong>Order Date:</strong> {formatDate(selectedOrder.orderDate || selectedOrder.createdAt)}</p>
                 </div>
                 <div>
-                  <h3 style={{marginBottom: '10px', color: 'var(--primary)'}}>Payment & Delivery</h3>
-                  <p><strong>Payment Method:</strong> {selectedOrder.paymentMethod?.toUpperCase() || 'N/A'}</p>
-                  <p><strong>Payment Status:</strong> <span style={{color: selectedOrder.paymentStatus === 'completed' ? 'green' : 'orange'}}>{selectedOrder.paymentStatus?.toUpperCase() || 'N/A'}</span></p>
-                  <p><strong>Order Status:</strong> <span style={{color: selectedOrder.orderStatus === 'completed' ? 'green' : selectedOrder.orderStatus === 'cancelled' ? 'red' : 'orange'}}>{selectedOrder.orderStatus?.toUpperCase() || 'N/A'}</span></p>
-                  <p><strong>Expected Delivery:</strong> {formatDate(selectedOrder.expectedDeliveryDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))}</p>
+                  <h3>Payment &amp; Delivery</h3>
+                  <p><strong>Method:</strong> {selectedOrder.paymentMethod?.toUpperCase() || 'N/A'}</p>
+                  <p><strong>Payment:</strong> {selectedOrder.paymentStatus === 'completed' ? '✅ Completed' : selectedOrder.paymentStatus?.toUpperCase() || 'N/A'}</p>
+                  <p><strong>Order Status:</strong> {selectedOrder.orderStatus?.charAt(0).toUpperCase() + selectedOrder.orderStatus?.slice(1) || 'N/A'}</p>
+                  <p><strong>Est. Delivery:</strong> {formatDate(selectedOrder.expectedDeliveryDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000))}</p>
                 </div>
               </div>
 
+              {/* Items Table */}
               <table>
                 <thead>
                   <tr>
                     <th>Item</th>
                     <th>Author</th>
-                    <th>Quantity</th>
+                    <th>Qty</th>
                     <th>Unit Price</th>
                     <th>Total</th>
                   </tr>
@@ -538,61 +512,59 @@ export default function Orders() {
                     const bookTitle = book.title || item.bookTitle || 'Untitled Book';
                     const author = book.author || item.author || 'Unknown';
                     const unitPrice = item.unitPrice || item.price || 0;
-                    const quantity = item.quantity || 1;
-                    const total = unitPrice * quantity;
-                    
+                    const qty = item.quantity || 1;
                     return (
                       <tr key={index}>
-                        <td>{bookTitle}</td>
+                        <td><strong>{bookTitle}</strong></td>
                         <td>{author}</td>
-                        <td>{quantity}</td>
+                        <td>{qty}</td>
                         <td>LKR {unitPrice.toFixed(2)}</td>
-                        <td>LKR {total.toFixed(2)}</td>
+                        <td>LKR {(unitPrice * qty).toFixed(2)}</td>
                       </tr>
                     );
                   })}
                 </tbody>
                 <tfoot>
-                  <tr style={{borderTop: '2px solid var(--border)'}}>
-                    <td colSpan="4" style={{textAlign: 'right', paddingTop: '15px'}}><strong>Subtotal:</strong></td>
-                    <td style={{paddingTop: '15px'}}><strong>LKR {(selectedOrder.totalPrice || calculateOrderTotal(selectedOrder.items)).toFixed(2)}</strong></td>
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: 'right' }}>Subtotal:</td>
+                    <td><strong>LKR {(selectedOrder.totalPrice || calculateOrderTotal(selectedOrder.items)).toFixed(2)}</strong></td>
                   </tr>
                   <tr>
-                    <td colSpan="4" style={{textAlign: 'right'}}>Shipping:</td>
+                    <td colSpan="4" style={{ textAlign: 'right' }}>Shipping:</td>
                     <td>LKR 0.00</td>
                   </tr>
                   <tr>
-                    <td colSpan="4" style={{textAlign: 'right'}}>Tax (0%):</td>
+                    <td colSpan="4" style={{ textAlign: 'right' }}>Tax (0%):</td>
                     <td>LKR 0.00</td>
                   </tr>
                   <tr className="total-row">
-                    <td colSpan="4" style={{textAlign: 'right', fontSize: '1.2em'}}>Total Amount:</td>
-                    <td style={{fontSize: '1.2em'}}><strong>LKR {(selectedOrder.totalPrice || calculateOrderTotal(selectedOrder.items)).toFixed(2)}</strong></td>
+                    <td colSpan="4" style={{ textAlign: 'right' }}>Total Amount:</td>
+                    <td>LKR {(selectedOrder.totalPrice || calculateOrderTotal(selectedOrder.items)).toFixed(2)}</td>
                   </tr>
                 </tfoot>
               </table>
 
+              {/* Footer */}
               <div className="invoice-footer">
-                <div style={{marginTop: '40px', padding: '20px', background: 'var(--panel)', borderRadius: '8px'}}>
-                  <h4 style={{marginBottom: '10px', color: 'var(--primary)'}}>Terms & Conditions</h4>
-                  <ul style={{fontSize: '12px', color: 'var(--muted)', lineHeight: '1.8', paddingLeft: '20px'}}>
+                <div>
+                  <h4>Terms &amp; Conditions</h4>
+                  <ul>
                     <li>All sales are final. Returns accepted within 14 days with receipt.</li>
                     <li>Damaged items must be reported within 48 hours of delivery.</li>
-                    <li>Delivery time is 5-7 business days from order confirmation.</li>
+                    <li>Delivery time is 5–7 business days from order confirmation.</li>
                     <li>Payment must be completed before shipment for online orders.</li>
                   </ul>
                 </div>
-                <p style={{textAlign: 'center', marginTop: '30px', color: 'var(--primary)', fontSize: '16px', fontWeight: 'bold'}}>
-                  Thank you for your purchase!
-                </p>
-                <p style={{textAlign: 'center', marginTop: '10px', color: 'var(--muted)', fontSize: '12px'}}>
-                  For any queries, please contact us at support@bookstore.lk or call +94 11 234 5678
-                </p>
+                <div className="invoice-thank-you">
+                  <p>Thank you for your purchase! 🎉</p>
+                  <p>For queries: support@bookstore.lk &nbsp;|&nbsp; +94 11 234 5678</p>
+                </div>
               </div>
             </div>
 
-            <div className="modal-actions" style={{marginTop: '20px', textAlign: 'center'}}>
-              <button className="btn btn--primary" onClick={downloadInvoicePDF} style={{marginRight: '10px'}}>
+            {/* Actions */}
+            <div className="modal-actions">
+              <button className="btn btn--primary" onClick={downloadInvoicePDF}>
                 📥 Download PDF
               </button>
               <button className="btn btn--outline" onClick={() => setShowInvoiceModal(false)}>
@@ -610,11 +582,11 @@ export default function Orders() {
               <h2>{selectedBook.title}</h2>
               <button className="modal-close-btn" onClick={handleCloseBuyModal}>×</button>
             </div>
-            
+
             <div className="modal-body">
               <div className="book-image-container">
-                <img 
-                  src={getImageUrl(selectedBook.imageUrl)} 
+                <img
+                  src={getImageUrl(selectedBook.imageUrl)}
                   alt={selectedBook.title}
                   className="modal-book-image"
                   onError={(e) => {
@@ -645,16 +617,16 @@ export default function Orders() {
               <div className="quantity-section">
                 <h3>Quantity</h3>
                 <div className="quantity-controls">
-                  <button 
-                    className="qty-btn" 
+                  <button
+                    className="qty-btn"
                     onClick={() => handleQuantityChange(-1)}
                     disabled={quantity <= 1}
                   >
                     −
                   </button>
-                  <input 
-                    type="number" 
-                    className="qty-input" 
+                  <input
+                    type="number"
+                    className="qty-input"
                     value={quantity}
                     onChange={(e) => {
                       const val = parseInt(e.target.value) || 1;
@@ -663,8 +635,8 @@ export default function Orders() {
                     min="1"
                     max={selectedBook.stock || 999}
                   />
-                  <button 
-                    className="qty-btn" 
+                  <button
+                    className="qty-btn"
                     onClick={() => handleQuantityChange(1)}
                     disabled={selectedBook.stock && quantity >= selectedBook.stock}
                   >
@@ -676,12 +648,12 @@ export default function Orders() {
               <div className="added-date-section">
                 <h3>Added on</h3>
                 <p className="added-date">
-                  {selectedBook.createdAt 
-                    ? new Date(selectedBook.createdAt).toLocaleDateString('en-US', { 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })
+                  {selectedBook.createdAt
+                    ? new Date(selectedBook.createdAt).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })
                     : 'N/A'
                   }
                 </p>

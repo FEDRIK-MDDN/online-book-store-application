@@ -27,8 +27,10 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/admin")
+@CrossOrigin(origins = {"http://localhost:3000", "http://127.0.0.1:3000"})
 @Validated
 public class AdminController {
+
 
     private final UserService userService;
     private final BookService bookService;

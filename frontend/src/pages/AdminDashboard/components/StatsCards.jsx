@@ -41,8 +41,8 @@ export default function StatsCards({ stats, books, orders, users }) {
   return (
     <div className="stats-cards">
       {cards.map((card, index) => (
-        <div 
-          key={index} 
+        <div
+          key={index}
           className="stat-card"
           style={{ '--card-color': card.color, '--card-bg': card.bgColor }}
         >

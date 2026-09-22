@@ -571,13 +571,6 @@ export default function UsersManagement() {
                   <path d="M8 3v10M12 9l-4 4-4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </th>
-              <th className="last-active-col">
-                Last active
-                <svg className="sort-icon" width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <path d="M8 3v10M12 9l-4 4-4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </th>
-              <th className="date-added-col">Date added</th>
               <th className="actions-col"></th>
             </tr>
           </thead>
@@ -599,12 +592,6 @@ export default function UsersManagement() {
                     >
                       {roleInfo.label}
                     </span>
-                  </td>
-                  <td className="last-active-col">
-                    {formatDate(userItem.lastActive)}
-                  </td>
-                  <td className="date-added-col">
-                    {formatDate(userItem.createdAt)}
                   </td>
                   <td className="actions-col">
                   <button 

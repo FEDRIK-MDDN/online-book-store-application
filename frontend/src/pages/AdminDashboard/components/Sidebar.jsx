@@ -3,19 +3,21 @@ import './Sidebar.css';
 
 export default function Sidebar({ activeView, setActiveView, onLogout }) {
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
-    { id: 'books', label: 'Books', icon: '📚' },
-    { id: 'orders', label: 'Orders', icon: '📦' },
-    { id: 'users', label: 'Users', icon: '👥' },
-    { id: 'categories', label: 'Categories', icon: '🏷️' },
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'books', label: 'Books' },
+    { id: 'orders', label: 'Orders' },
+    { id: 'users', label: 'Users' },
+    { id: 'categories', label: 'Categories' },
   ];
 
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
         <div className="sidebar-logo">
-          <span className="logo-icon">📖</span>
-          <span className="logo-text">BookStore</span>
+          <div>
+            <span className="logo-text">BOOKS</span>
+            <span className="logo-subtitle">Admin Panel</span>
+          </div>
         </div>
       </div>
 
@@ -26,7 +28,6 @@ export default function Sidebar({ activeView, setActiveView, onLogout }) {
             className={`sidebar-item ${activeView === item.id ? 'active' : ''}`}
             onClick={() => setActiveView(item.id)}
           >
-            <span className="sidebar-icon">{item.icon}</span>
             <span className="sidebar-label">{item.label}</span>
           </button>
         ))}
@@ -34,7 +35,6 @@ export default function Sidebar({ activeView, setActiveView, onLogout }) {
 
       <div className="sidebar-footer">
         <button className="sidebar-item logout-btn" onClick={onLogout}>
-          <span className="sidebar-icon">🚪</span>
           <span className="sidebar-label">Logout</span>
         </button>
       </div>

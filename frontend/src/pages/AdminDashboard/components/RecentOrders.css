@@ -1,8 +1,13 @@
+/* ============================================================
+   BOOKS — Admin Recent Orders Card
+   ============================================================ */
+
 .recent-orders-card {
-  background: white;
-  border-radius: 12px;
+  background: var(--ph-white);
+  border: 1px solid var(--ph-border);
+  border-radius: var(--radius-lg);
   padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--shadow);
   height: fit-content;
 }
 
@@ -14,27 +19,30 @@
 }
 
 .orders-header h3 {
-  font-size: 1.25rem;
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
   font-weight: 700;
-  color: #1f2937;
+  color: var(--ph-dark);
   margin: 0;
 }
 
 .view-all-btn {
   background: transparent;
   border: none;
-  color: #667eea;
+  color: var(--ph-gold);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  font-family: var(--font-body);
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  transition: color 0.2s;
+  transition: color 0.18s;
 }
 
 .view-all-btn:hover {
-  color: #5568d3;
+  color: var(--ph-gold-dark);
+  text-decoration: underline;
 }
 
 .orders-table-container {
@@ -47,81 +55,86 @@
 }
 
 .orders-table thead {
-  background: #f9fafb;
-  border-radius: 8px;
+  background: var(--ph-tag-bg);
+  border-radius: var(--radius-sm);
 }
 
 .orders-table th {
-  padding: 0.75rem 1rem;
+  padding: 10px 12px;
   text-align: left;
-  font-size: 0.85rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  color: #6b7280;
+  color: var(--ph-muted);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.06em;
+  font-family: var(--font-body);
 }
 
 .orders-table td {
-  padding: 1rem;
-  border-bottom: 1px solid #f3f4f6;
-  font-size: 0.9rem;
+  padding: 1rem 12px;
+  border-bottom: 1px solid var(--ph-border);
+  font-size: 0.875rem;
+  font-family: var(--font-body);
+  color: var(--ph-dark);
 }
 
 .orders-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-.orders-table tbody tr:hover {
-  background: #f9fafb;
+.orders-table tbody tr:hover td {
+  background: var(--ph-tag-bg);
 }
 
 .order-id {
   font-weight: 600;
-  color: #667eea;
+  color: var(--ph-gold-dark);
 }
 
 .customer-name {
-  color: #1f2937;
+  color: var(--ph-dark);
   font-weight: 500;
 }
 
 .order-date {
-  color: #6b7280;
+  color: var(--ph-muted);
+  font-size: 0.82rem;
 }
 
 .status-badge {
   display: inline-block;
-  padding: 0.375rem 0.75rem;
+  padding: 3px 10px;
   border-radius: 20px;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: capitalize;
 }
 
 .status-badge.shipped {
-  background: rgba(16, 185, 129, 0.1);
-  color: #10b981;
+  background: #D1F2E2;
+  color: #2E7D52;
 }
 
 .status-badge.pending {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
+  background: var(--warning-light);
+  color: #B45309;
 }
 
 .status-badge.delivered {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
+  background: var(--ph-gold-light);
+  color: var(--ph-gold-dark);
 }
 
 .status-badge.cancelled {
-  background: rgba(239, 68, 68, 0.1);
-  color: #ef4444;
+  background: #FEE2E2;
+  color: #C0392B;
 }
 
 .no-data {
   text-align: center;
-  color: #9ca3af;
+  color: var(--ph-muted2);
   padding: 2rem !important;
+  font-size: 0.875rem;
 }
 
 .empty-state {
@@ -136,21 +149,22 @@
 }
 
 .empty-state p {
-  color: #9ca3af;
+  color: var(--ph-muted2);
   margin: 0;
+  font-size: 0.875rem;
 }
 
 @media (max-width: 768px) {
   .orders-table {
-    font-size: 0.85rem;
+    font-size: 0.82rem;
   }
 
   .orders-table th,
   .orders-table td {
-    padding: 0.5rem;
+    padding: 8px;
   }
 
   .view-all-btn {
-    font-size: 0.8rem;
+    font-size: 0.78rem;
   }
 }

@@ -2,345 +2,163 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../authContext';
 import api from '../../api';
+import PaperHavenNav from '../../components/PaperHavenNav';
 import './Cart.css';
+
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return null;
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) return imageUrl;
+  return `http://localhost:8080${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+}
 
 export default function Cart() {
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
   const { user, token, logout } = useAuth();
   const navigate = useNavigate();
 
-  // Load cart items from backend on mount
   useEffect(() => {
-    if (user?.email) {
-      loadCart();
-    } else {
-      setLoading(false);
-    }
+    if (user?.email) loadCart();
+    else setLoading(false);
   }, [user]);
 
   const loadCart = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      
-      // Debug: Check token and user
-      console.log('Loading cart with:', { token, email: user.email, hasToken: !!token });
-      
+      setLoading(true); setError(null);
       const cartData = await api.getCart(token);
-      
-      // Debug: Log the raw cart data from backend
-      console.log('Raw cart data from backend:', cartData);
-      console.log('Cart items:', cartData.items);
-      
-      // Transform backend cart format to match frontend expectations
-      const items = cartData.items?.map(item => {
-        console.log('Processing cart item:', item);
-        return {
-          id: item.book?.id || item.bookId,
-          title: item.book?.title || item.bookTitle || 'Unknown Book',
-          price: item.book?.price || item.price || 0,
-          quantity: item.quantity || 1,
-          imageUrl: item.book?.imageUrl || item.imageUrl,
-          description: item.book?.description || item.description,
-          stock: item.book?.stock || item.stock,
-        };
-      }) || [];
-      
-      console.log('Transformed cart items:', items);
+      const items = cartData.items?.map(item => ({
+        id: item.book?.id || item.bookId,
+        title: item.book?.title || item.bookTitle || 'Unknown Book',
+        price: item.book?.price || item.price || 0,
+        quantity: item.quantity || 1,
+        imageUrl: item.book?.imageUrl || item.imageUrl,
+        description: item.book?.description || item.description,
+        stock: item.book?.stock || item.stock,
+      })) || [];
       setCartItems(items);
     } catch (err) {
-      console.error('Failed to load cart:', err);
       setError(err.message || 'Failed to load cart');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
-
-  // Apply theme
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
 
   const handleQuantityChange = async (itemId, delta) => {
     const item = cartItems.find(i => i.id === itemId);
     if (!item) return;
-    
     const newQty = item.quantity + delta;
-    if (newQty < 1) return; // Don't allow quantity less than 1
-    if (item.stock && newQty > item.stock) {
-      alert(`Only ${item.stock} items available in stock`);
-      return;
-    }
-
-    try {
-      await api.updateCartItem(token, itemId, newQty);
-      await loadCart(); // Reload cart from backend
-    } catch (err) {
-      console.error('Failed to update quantity:', err);
-      alert('Failed to update quantity. Please try again.');
-    }
+    if (newQty < 1) return;
+    if (item.stock && newQty > item.stock) { alert(`Only ${item.stock} items in stock`); return; }
+    try { await api.updateCartItem(token, itemId, newQty); await loadCart(); }
+    catch { alert('Failed to update quantity.'); }
   };
 
   const handleQuantityInputChange = async (itemId, value) => {
     const qty = parseInt(value) || 1;
     if (qty < 1) return;
-    
     const item = cartItems.find(i => i.id === itemId);
-    if (item?.stock && qty > item.stock) {
-      alert(`Only ${item.stock} items available in stock`);
-      return;
-    }
-
-    try {
-      await api.updateCartItem(token, itemId, qty);
-      await loadCart(); // Reload cart from backend
-    } catch (err) {
-      console.error('Failed to update quantity:', err);
-      alert('Failed to update quantity. Please try again.');
-    }
+    if (item?.stock && qty > item.stock) { alert(`Only ${item.stock} items in stock`); return; }
+    try { await api.updateCartItem(token, itemId, qty); await loadCart(); }
+    catch { alert('Failed to update quantity.'); }
   };
 
   const handleRemoveItem = async (itemId) => {
     try {
-      console.log('Removing item:', itemId, 'with token:', token ? 'present' : 'missing');
-      const result = await api.removeFromCart(token, itemId);
-      console.log('Remove item result:', result);
-      
-      // Force immediate UI update
-      setCartItems(prevItems => prevItems.filter(item => item.id !== itemId));
-      
-      // Reload from backend to ensure sync
+      await api.removeFromCart(token, itemId);
+      setCartItems(prev => prev.filter(i => i.id !== itemId));
       await loadCart();
-    } catch (err) {
-      console.error('Failed to remove item:', err);
-      console.error('Error details:', {
-        message: err.message,
-        status: err.status,
-        data: err.data
-      });
-      alert(`Failed to remove item: ${err.message || 'Unknown error'}. Please try again.`);
-    }
+    } catch (err) { alert(`Failed to remove item: ${err.message}`); }
   };
 
   const handleClearCart = async () => {
-    if (!window.confirm('Are you sure you want to clear your cart?')) {
-      return;
-    }
-    
+    if (!window.confirm('Clear your entire cart?')) return;
     try {
-      console.log('Clearing cart with token:', token ? 'present' : 'missing');
-      
-      // Try backend clear first
-      try {
-        const result = await api.clearCart(token);
-        console.log('Clear cart result:', result);
-      } catch (backendErr) {
-        console.warn('Backend clear cart failed, falling back to removing items individually:', backendErr);
-        
-        // Fallback: Try removing items one by one
-        const itemsToRemove = [...cartItems];
-        let successCount = 0;
-        let failCount = 0;
-        
-        for (const item of itemsToRemove) {
-          try {
-            await api.removeFromCart(token, item.id);
-            successCount++;
-          } catch (removeErr) {
-            console.error(`Failed to remove item ${item.id}:`, removeErr);
-            failCount++;
-          }
-        }
-        
-        if (failCount > 0 && successCount === 0) {
-          throw new Error('Unable to clear cart. Please contact support.');
-        }
-      }
-      
-      // Force immediate UI update
+      try { await api.clearCart(token); }
+      catch { for (const item of cartItems) { try { await api.removeFromCart(token, item.id); } catch {} } }
       setCartItems([]);
-      
-      // Reload from backend to ensure sync
       await loadCart();
-      
-      alert('Cart cleared successfully!');
-    } catch (err) {
-      console.error('Failed to clear cart:', err);
-      console.error('Error details:', {
-        message: err.message,
-        status: err.status,
-        data: err.data
-      });
-      alert(`Failed to clear cart: ${err.message || 'Unknown error'}. Please try again.`);
-    }
+    } catch (err) { alert(`Failed to clear cart: ${err.message}`); }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/', { replace: true });
-  };
-
-  const calculateItemTotal = (item) => {
-    return (item.price * item.quantity).toFixed(2);
-  };
-
-  const calculateTotal = () => {
-    return cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0).toFixed(2);
-  };
-
-  const handleCheckout = () => {
-    if (cartItems.length === 0) {
-      alert('Your cart is empty!');
-      return;
-    }
-    // Navigate to checkout page
-    navigate('/checkout');
-  };
-
-  const getImageUrl = (imageUrl) => {
-    if (!imageUrl) return null;
-    // If it's already a full URL, return as is
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) {
-      return imageUrl;
-    }
-    // If it's a relative path, construct the full URL
-    // Try localhost:8080 (Spring Boot backend) first
-    return `http://localhost:8080${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
-  };
+  const handleLogout = () => { logout(); navigate('/', { replace: true }); };
+  const calculateTotal = () => cartItems.reduce((s, i) => s + i.price * i.quantity, 0).toFixed(2);
+  const cartCount = cartItems.reduce((s, i) => s + i.quantity, 0);
 
   return (
-    <div className="cart-page">
-      <header className="cart-navbar">
-        <Link to="/home" className="cart-brand">📚 <span>BOOKS</span></Link>
-        <nav className="cart-nav-links">
-          <Link to="/home">Home</Link>
-          <Link to="/cart" className="active">🛒 Cart</Link>
-          <Link to="/checkout">💳 Checkout</Link>
-          <Link to="/orders">📦 My Orders</Link>
-        </nav>
-        <div className="cart-nav-actions">
-          <input
-            type="search"
-            placeholder="Search..."
-            className="cart-search"
-          />
-          <button
-            type="button"
-            className="btn btn--ghost"
-            aria-label="Toggle theme"
-            onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-          >
-            {theme === 'light' ? '🌙' : '☀️'}
-          </button>
-          <Link className="btn btn--ghost" to="/profile">👤 {user?.name || user?.email}</Link>
-          <button className="btn btn--outline" onClick={handleLogout}>Logout</button>
-        </div>
-      </header>
+    <div className="ph-cart-page">
+      <PaperHavenNav user={user} cartCount={cartCount} onLogout={handleLogout} activeLink="cart" />
 
-      <div className="cart-container">
-        <div className="cart-header-section">
-          <h1>My Cart</h1>
-          <Link to="/home" className="btn-continue-shopping">Continue Shopping</Link>
+      <div className="ph-cart-wrap">
+        {/* Page header — always full width */}
+        <div className="ph-cart-hdr">
+          <h1 className="ph-cart-title">My Cart</h1>
+          <Link to="/home" className="ph-cart-continue">← Continue Shopping</Link>
         </div>
 
         {loading ? (
-          <div className="empty-cart">
-            <p>Loading cart...</p>
+          <div className="ph-cart-empty">
+            <div className="ph-spinner" style={{margin:'0 auto 16px'}} />
+            <p className="ph-cart-empty__text">Loading cart...</p>
           </div>
         ) : error ? (
-          <div className="empty-cart" style={{ color: 'red' }}>
-            <p>Error: {error}</p>
-            <button className="btn btn--primary" onClick={loadCart}>Retry</button>
+          <div className="ph-cart-empty">
+            <div className="ph-cart-empty__icon">⚠️</div>
+            <p className="ph-cart-empty__text">{error}</p>
+            <button className="ph-btn ph-btn--primary" onClick={loadCart}>Retry</button>
           </div>
         ) : cartItems.length === 0 ? (
-          <div className="empty-cart">
-            <p>Your cart is empty</p>
-            <Link to="/home" className="btn btn--primary">Start Shopping</Link>
+          <div className="ph-cart-empty">
+            <div className="ph-cart-empty__icon">🛒</div>
+            <p className="ph-cart-empty__text">Your cart is empty</p>
+            <Link to="/home" className="ph-btn ph-btn--primary">Start Shopping</Link>
           </div>
         ) : (
-          <>
-            <div className="cart-items-section">
-              {cartItems.map((item) => (
-                <div key={item.id} className="cart-item">
+          /* Two-column grid only when items exist */
+          <div className="ph-cart-main">
+            {/* Left — items */}
+            <div className="ph-cart-list">
+              {cartItems.map(item => (
+                <div key={item.id} className="ph-cart-item">
                   <img
-                    src={getImageUrl(item.imageUrl) || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=600'}
+                    className="ph-cart-item__img"
+                    src={getImageUrl(item.imageUrl) || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'}
                     alt={item.title}
-                    className="cart-item-image"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=600';
-                    }}
+                    onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }}
                   />
-                  <div className="cart-item-details">
-                    <h3>{item.title}</h3>
-                    <p className="cart-item-description">{item.description || 'good book for kids'}</p>
-                    <p className="cart-item-price">
-                      <span className="label">LKR</span> {Number(item.price).toFixed(2)} <span className="per-unit">per unit</span>
-                    </p>
+                  <div className="ph-cart-item__body">
+                    <div className="ph-cart-item__title">{item.title}</div>
+                    <div className="ph-cart-item__desc">{item.description || 'A wonderful read.'}</div>
+                    <div className="ph-cart-item__price-row">
+                      <span className="ph-cart-item__label">LKR</span>
+                      <span className="ph-cart-item__price">{Number(item.price).toFixed(2)}</span>
+                      <span className="ph-cart-item__per">per unit</span>
+                    </div>
                   </div>
-                  <div className="cart-item-actions">
-                    <div className="quantity-controls-cart">
-                      <button
-                        className="qty-btn-cart"
-                        onClick={() => handleQuantityChange(item.id, -1)}
-                        disabled={item.quantity <= 1}
-                      >
-                        −
-                      </button>
-                      <input
-                        type="number"
-                        className="qty-input-cart"
-                        value={item.quantity}
-                        onChange={(e) => handleQuantityInputChange(item.id, e.target.value)}
-                        min="1"
-                      />
-                      <button
-                        className="qty-btn-cart"
-                        onClick={() => handleQuantityChange(item.id, 1)}
-                      >
-                        +
-                      </button>
+                  <div className="ph-cart-item__controls">
+                    <div className="ph-qty-row">
+                      <button className="ph-qty-btn" onClick={() => handleQuantityChange(item.id, -1)} disabled={item.quantity <= 1}>−</button>
+                      <input className="ph-qty-input" type="number" value={item.quantity} min="1"
+                        onChange={e => handleQuantityInputChange(item.id, e.target.value)} />
+                      <button className="ph-qty-btn" onClick={() => handleQuantityChange(item.id, 1)} disabled={item.stock && item.quantity >= item.stock}>+</button>
                     </div>
-                    <div className="cart-item-total">
-                      <span className="total-label">total:</span>
-                      <span className="total-price">LKR {calculateItemTotal(item)}</span>
+                    <div className="ph-cart-item__total">
+                      Total: <strong>LKR {(item.price * item.quantity).toFixed(2)}</strong>
                     </div>
-                    <button
-                      className="btn-remove-item"
-                      onClick={() => handleRemoveItem(item.id)}
-                      title="Remove item"
-                    >
-                      🗑️
-                    </button>
+                    <button className="ph-cart-item__remove" onClick={() => handleRemoveItem(item.id)} title="Remove">🗑️</button>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="cart-summary">
-              <div className="summary-row">
-                <span>Items ({cartItems.length}):</span>
-                <span>LKR {calculateTotal()}</span>
-              </div>
-              <div className="summary-row total-row">
-                <span>Total:</span>
-                <span className="total-amount">LKR {calculateTotal()}</span>
-              </div>
+            {/* Right — Summary */}
+            <div className="ph-cart-summary">
+              <div className="ph-cart-summary__title">Order Summary</div>
+              <div className="ph-summary-row"><span>Items ({cartItems.length})</span><span>LKR {calculateTotal()}</span></div>
+              <div className="ph-summary-row"><span>Shipping</span><span>Free</span></div>
+              <div className="ph-summary-row ph-summary-row--total"><span>Total</span><span>LKR {calculateTotal()}</span></div>
+              <button className="ph-cart-checkout-btn" onClick={() => navigate('/checkout')}>Proceed to Checkout</button>
+              <button className="ph-cart-clear-btn" onClick={handleClearCart}>Clear Cart</button>
             </div>
-
-            <div className="cart-actions">
-              <button className="btn-clear-cart" onClick={handleClearCart}>
-                Clear Cart
-              </button>
-              <button className="btn-checkout" onClick={handleCheckout}>
-                PROCEED TO CHECKOUT
-              </button>
-            </div>
-          </>
+          </div>
         )}
       </div>
     </div>

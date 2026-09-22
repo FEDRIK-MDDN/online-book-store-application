@@ -64,7 +64,10 @@ public class OrderServiceImpl implements OrderService {
         if (paymentMethod == null || paymentMethod.isBlank()) paymentMethod = "cash";
         paymentMethod = paymentMethod.toLowerCase();
 
-        if (!paymentMethod.equals("cash") && !paymentMethod.equals("card")) {
+        // Normalize "cod" (Cash on Delivery) to "cash" for internal processing
+        if (paymentMethod.equals("cod")) paymentMethod = "cash";
+
+        if (!paymentMethod.equals("cash") && !paymentMethod.equals("card") && !paymentMethod.equals("bank")) {
             throw new IllegalArgumentException("Unsupported payment method: " + paymentMethod);
         }
 

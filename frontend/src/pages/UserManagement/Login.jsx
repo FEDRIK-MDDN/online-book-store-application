@@ -1,18 +1,23 @@
 // src/pages/UserManagement/Login.jsx
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { api, adminApi } from '../../api';
+import { api, adminApi, publicApi } from '../../api';
 import { useAuth } from '../../authContext';
-import './auth.css'; // make sure this path is correct
+import './auth.css';
+
+function getImageUrl(imageUrl) {
+  if (!imageUrl) return 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400';
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || imageUrl.startsWith('data:')) return imageUrl;
+  return `http://localhost:8080${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+}
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
   const location = useLocation();
 
-  // Check if trying to access admin route
-  const isAdminLogin = location.pathname === '/admin/login' || 
-                       location.state?.from?.pathname?.startsWith('/admin');
+  const isAdminLogin = location.pathname === '/admin/login' ||
+    location.state?.from?.pathname?.startsWith('/admin');
 
   const [form, setForm] = useState({
     email: location.state?.email || '',
@@ -22,10 +27,17 @@ export default function Login() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [heroBooks, setHeroBooks] = useState([]);
+
+  useEffect(() => {
+    publicApi.getBooks()
+      .then(data => setHeroBooks(Array.isArray(data) ? data.slice(0, 3) : []))
+      .catch(() => setHeroBooks([]));
+  }, []);
 
   const onChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+    setForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const validate = () => {
@@ -55,21 +67,15 @@ export default function Login() {
     setError('');
     setBusy(true);
     try {
-      // Use adminApi for admin login, regular api for user login
       const loginMethod = isAdminLogin ? adminApi.login : api.login;
       const res = await loginMethod({ email: form.email, password: form.password });
-      const baseUser = res.user || { email: form.email };
-      // If backend uses session cookies and doesn't return a token,
-      // mark token as 'session' to treat as authenticated in the app.
-      const token = res.token || 'session';
+      const baseUser = res.user || res.raw || { email: form.email };
+      const token = res.token || null;
+      if (!token) { setError('Login failed: no token received from server'); return; }
       login({ ...baseUser, token, remember: form.remember });
-      
-      // Redirect based on user role
-      if (baseUser.role === 'ADMIN') {
-        navigate('/admin/dashboard', { replace: true });
-      } else {
-        navigate('/home', { replace: true });
-      }
+      const role = (baseUser.role || '').toUpperCase();
+      if (role === 'ADMIN') navigate('/admin/dashboard', { replace: true });
+      else navigate('/home', { replace: true });
     } catch (err) {
       setError(err.message || 'Login failed');
     } finally {
@@ -78,105 +84,137 @@ export default function Login() {
   };
 
   return (
-    <div className="auth-container">
-      <form className="auth-card" onSubmit={onSubmit} aria-labelledby="loginTitle">
-        <div className="auth-header">
-          <h2 id="loginTitle">{isAdminLogin ? 'Admin Sign in' : 'Sign in'}</h2>
-          <p className="auth-subtitle">Welcome back! Please enter your details.</p>
+    <div className="ph-auth-page">
+      {/* Left Panel */}
+      <div className="ph-auth-left">
+        <div className="ph-auth-left__content">
+          <div className="ph-auth-left__logo">BOOKS</div>
+          <h2 className="ph-auth-left__title">Your Next Great<br />Read Awaits</h2>
+          <p className="ph-auth-left__desc">
+            Join thousands of readers discovering curated books every day.
+            Sign in to access your personalized library.
+          </p>
+          <div className="ph-auth-hero-books">
+            {heroBooks[1] && (
+              <div className="ph-auth-hero-book ph-auth-hero-book--side">
+                <img
+                  src={getImageUrl(heroBooks[1].imageUrl)}
+                  alt={heroBooks[1].title}
+                  onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }}
+                />
+              </div>
+            )}
+            {heroBooks[0] && (
+              <div className="ph-auth-hero-book ph-auth-hero-book--main">
+                <img
+                  src={getImageUrl(heroBooks[0].imageUrl)}
+                  alt={heroBooks[0].title}
+                  onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }}
+                />
+              </div>
+            )}
+            {heroBooks[2] && (
+              <div className="ph-auth-hero-book ph-auth-hero-book--side">
+                <img
+                  src={getImageUrl(heroBooks[2].imageUrl)}
+                  alt={heroBooks[2].title}
+                  onError={e => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?q=80&w=400'; }}
+                />
+              </div>
+            )}
+            {heroBooks.length === 0 && (
+              <>
+                {['photo-1544947950-fa07a98d237f','photo-1543002588-bfa74002ed7e','photo-1497633762265-9d179a990aa6'].map((id, i) => (
+                  <div key={i} className={`ph-auth-hero-book ${i === 1 ? 'ph-auth-hero-book--main' : 'ph-auth-hero-book--side'}`}>
+                    <img src={`https://images.unsplash.com/${id}?q=80&w=200`} alt="book" />
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+          <div className="ph-auth-left__features">
+            {['Curated book collections', 'Personalized recommendations', 'Exclusive member discounts'].map((f, i) => (
+              <div key={i} className="ph-auth-left__feature">
+                <div className="ph-auth-left__feature-icon">✓</div>
+                {f}
+              </div>
+            ))}
+          </div>
         </div>
+      </div>
 
-        {location.state?.registered && (
-          <div className="auth-info" role="status">Account created. Please sign in.</div>
-        )}
+      {/* Right Panel - Form */}
+      <div className="ph-auth-right">
+        <div className="ph-auth-form-wrap">
+          <div className="ph-auth-form__logo">BOOKS</div>
+          <h1 className="ph-auth-form__title">{isAdminLogin ? 'Admin Sign in' : 'Welcome back'}</h1>
+          <p className="ph-auth-form__sub">Please enter your details to continue.</p>
 
-        {error && <div className="auth-error" role="alert">{error}</div>}
+          {location.state?.registered && (
+            <div className="ph-auth-info" role="status">✓ Account created. Please sign in.</div>
+          )}
+          {error && <div className="ph-auth-error" role="alert">⚠ {error}</div>}
 
-        {/* Email */}
-        <label className="auth-label" htmlFor="email">
-          Email
-          <input
-            id="email"
-            type="email"
-            name="email"
-            value={form.email}
-            onChange={onChange}
-            placeholder="you@example.com"
-            autoComplete="email"
-            className="auth-input"
-            disabled={busy}
-            required
-          />
-        </label>
+          <form onSubmit={onSubmit} aria-labelledby="loginTitle" noValidate>
+            {/* Email */}
+            <div className="ph-field">
+              <label htmlFor="email">Email address</label>
+              <input id="email" type="email" name="email" value={form.email} onChange={onChange}
+                placeholder="you@example.com" autoComplete="email" disabled={busy} required />
+            </div>
 
-        {/* Password + toggle */}
-        <label className="auth-label" htmlFor="password">
-          Password
-          <div className="pw-wrapper">
-            <input
-              id="password"
-              type={showPw ? 'text' : 'password'}
-              name="password"
-              value={form.password}
-              onChange={onChange}
-              placeholder="••••••••"
-              autoComplete="current-password"
-              className="auth-input"
-              disabled={busy}
-              required
-            />
-            <button
-              type="button"
-              className="pw-toggle"
-              onClick={() => setShowPw((s) => !s)}
-              aria-label={showPw ? 'Hide password' : 'Show password'}
-            >
-              {showPw ? 'Hide' : 'Show'}
+            {/* Password */}
+            <div className="ph-field">
+              <label htmlFor="password">Password</label>
+              <div className="ph-field__input-wrap">
+                <input id="password" type={showPw ? 'text' : 'password'} name="password"
+                  value={form.password} onChange={onChange} placeholder="••••••••"
+                  autoComplete="current-password" disabled={busy} required
+                  style={{ paddingRight: '52px' }} />
+                <button type="button" className="ph-field__toggle" onClick={() => setShowPw(s => !s)} aria-label={showPw ? 'Hide' : 'Show'}>
+                  {showPw ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              {form.password && (
+                <div className="ph-pw-strength">
+                  <div className="ph-pw-bar-track"><div className={`ph-pw-bar ph-pw-bar--${pwStrength.score}`} /></div>
+                  <span className="ph-pw-label">{pwStrength.label}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Remember + Forgot */}
+            <div className="ph-auth-row">
+              <label className="ph-checkbox">
+                <input type="checkbox" name="remember" checked={form.remember} onChange={onChange} disabled={busy} />
+                <span>Remember me</span>
+              </label>
+              <Link to="/forgot-password" className="ph-auth-link">Forgot password?</Link>
+            </div>
+
+            {/* Submit */}
+            <button id="login-submit-btn" className="ph-auth-submit" type="submit" disabled={busy}>
+              {busy ? 'Signing in…' : (isAdminLogin ? 'Admin Sign In' : 'Sign In')}
+            </button>
+          </form>
+
+          <div className="ph-auth-divider"><span>or continue with</span></div>
+
+          <div className="ph-social-grid">
+            <button type="button" className="ph-social-btn" disabled={busy}>
+              🔵 Microsoft
+            </button>
+            <button type="button" className="ph-social-btn" disabled={busy}>
+              🔴 Google
             </button>
           </div>
-          <div className="pw-strength" aria-live="polite">
-            <div className={`pw-bar pw-bar--${pwStrength.score}`}></div>
-            <span className="pw-label">{pwStrength.label}</span>
-          </div>
-        </label>
 
-        {/* Row */}
-        <div className="auth-row">
-          <label className="checkbox">
-            <input
-              type="checkbox"
-              name="remember"
-              checked={form.remember}
-              onChange={onChange}
-              disabled={busy}
-            />
-            <span>Remember me</span>
-          </label>
-          <Link to="/forgot-password" className="auth-link">Change password?</Link>
+          <p className="ph-auth-footer">
+            Don't have an account?{' '}
+            <Link to="/register" className="ph-auth-link">Create account</Link>
+          </p>
         </div>
-
-        {/* Submit */}
-        <button className="btn btn--primary auth-submit" disabled={busy}>
-          {busy ? 'Signing in…' : 'Login'}
-        </button>
-
-        {/* Divider */}
-        <div className="auth-divider"><span>OR</span></div>
-
-        {/* Social (optional, wire later) */}
-        <div className="social-grid">
-          <button type="button" className="btn btn--outline social-btn" disabled={busy}>
-            <span>🔵</span> Continue with Microsoft
-          </button>
-          <button type="button" className="btn btn--outline social-btn" disabled={busy}>
-            <span>🟥</span> Continue with Google
-          </button>
-        </div>
-
-        {/* Footer */}
-        <p className="auth-footer">
-          No account? <Link to="/register" className="auth-link">Register</Link>
-        </p>
-      </form>
+      </div>
     </div>
   );
 }
